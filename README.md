@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# morto-vivo
-=======
 # Morto-Vivo
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
@@ -18,6 +15,19 @@ extensão é definida em `manifest.json`.
 4. Selecione a pasta que contém `manifest.json`.
 5. Abra o popup da extensão, cole as URLs — uma por linha — e clique em **Verificar Status**.
 
+### Requisitos e fluxo local
+
+- Requer Node.js 18 ou superior para rodar a validação automatizada do projeto.
+- A extensão não precisa de build nem de bundling: ela é carregada diretamente do diretório
+  do projeto como extensão não compactada.
+- Para validar sintaxe e testes locais, execute no diretório da raiz:
+
+```powershell
+npm run check
+```
+
+O comando executa a verificação de sintaxe e a suíte automática com `node --test`.
+
 ## Documentação
 
 - [Guia de uso](docs/USAGE.md): instalação, opções, resultados, notificações e solução de problemas.
@@ -34,4 +44,3 @@ npm run check
 
 O comando verifica a sintaxe JavaScript e executa os testes automatizados. Consulte o
 [guia de desenvolvimento](docs/DEVELOPMENT.md) para detalhes.
->>>>>>> 882c1f2 (versão estável)
