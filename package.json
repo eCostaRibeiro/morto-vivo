@@ -1,0 +1,10 @@
+{
+  "name": "morto-vivo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check": "npm run check:syntax && npm test"
+  }
+}

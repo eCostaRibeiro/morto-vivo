@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Resultados - Morto-Vivo</title>
+  <style>
+    :root {
+      --md-primary: #6750A4; --md-on-primary: #FFFFFF; --md-surface: #FEF7FF; --md-on-surface: #1D1B20;
+      --md-outline: #79747E; --md-success: #146C2E; --md-error: #B3261E; --md-zombie: #E65100; --md-unknown: #44546A;
+      --md-surface-container: #F3EDF7;
+    }
+    body { margin: 0; min-height: 100vh; background: var(--md-surface); color: var(--md-on-surface); font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif; }
+    .header { background: var(--md-primary); color: var(--md-on-primary); padding: 16px; font-size: 18px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24); }
+    .container { padding: 16px; max-width: 1100px; margin: 0 auto; }
+    .info { margin-bottom: 12px; font-size: 14px; color: var(--md-outline); }
+    .progress-wrapper { width: 100%; height: 12px; background: rgba(103,80,164,.15); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { width: 0%; height: 100%; background: var(--md-primary); border-radius: 999px; transition: width .25s ease; }
+    .progress-text { font-size: 13px; color: var(--md-outline); margin-top: 8px; }
+
+    .summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+    .chip { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--md-surface-container); border-left: 6px solid transparent; }
+    a.chip { text-decoration: none; }
+    a.chip:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+    .chip.ativa { border-left-color: var(--md-success); color: var(--md-success); }
+    .chip.erro { border-left-color: var(--md-zombie); color: var(--md-zombie); }
+    .chip.inativa { border-left-color: var(--md-error); color: var(--md-error); }
+    .chip.indet { border-left-color: var(--md-unknown); color: var(--md-unknown); }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
+    .toolbar input[type=search], .toolbar select { padding: 8px 12px; border: 1px solid var(--md-outline); border-radius: 8px; background: transparent; color: inherit; font-size: 13px; }
+    .toolbar input[type=search] { flex: 1; min-width: 200px; }
+    .btn { border: 1px solid rgba(103,80,164,.35); border-radius: 999px; background: rgba(103,80,164,.1); color: var(--md-primary); padding: 7px 14px; font-size: 12px; cursor: pointer; }
+    .btn:hover { background: rgba(103,80,164,.18); }
+    .btn[disabled] { opacity: .5; cursor: default; }
+
+    .category-section { margin-bottom: 24px; }
+    .category-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: rgba(103,80,164,.08); border: 1px solid rgba(103,80,164,.2); cursor: pointer; gap: 12px; }
+    .category-header:hover { background: rgba(103,80,164,.12); }
+    .category-header-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-primary); }
+    .category-subtitle { margin: 2px 0 0; font-size: 12px; color: var(--md-outline); }
+    .category-header-meta { display: flex; align-items: center; gap: 10px; color: var(--md-outline); font-size: 13px; }
+    .category-toggle { transition: transform .2s ease; display: inline-block; }
+    .category-content { overflow: hidden; padding: 12px 0; }
+    .category-content.collapsed { display: none; }
+    .result-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .result-item { padding: 10px 12px; border-radius: 8px; background: var(--md-surface-container); font-size: 13px; border-left: 6px solid transparent; cursor: pointer; }
+    .result-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .result-item.ativa { border-left-color: var(--md-success); }
+    .result-item.erro { border-left-color: var(--md-zombie); }
+    .result-item.inativa { border-left-color: var(--md-error); }
+    .result-item.indet { border-left-color: var(--md-unknown); }
+    .result-card { display: flex; align-items: center; gap: 12px; }
+    .result-favicon { width: 32px; height: 32px; flex-shrink: 0; border-radius: 6px; background: white; object-fit: contain; }
+    .result-content { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+    .result-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; font-size: 14px; min-width: 0; }
+    .result-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .result-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .ativa .result-status { color: var(--md-success); } .erro .result-status { color: var(--md-zombie); }
+    .inativa .result-status { color: var(--md-error); } .indet .result-status { color: var(--md-unknown); }
+    .result-url { font-size: 12px; color: var(--md-outline); word-break: break-all; }
+    .result-reason { font-size: 12px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: rgba(0,0,0,.07); color: var(--md-on-surface); }
+    .badge.takedown { background: #FDECEA; color: var(--md-error); font-weight: 600; }
+    .badge.timeout { background: #FFF3C4; color: #7A5C00; font-weight: 600; }
+    .badge.cancelado { background: rgba(0,0,0,.08); color: var(--md-outline); font-weight: 600; }
+    .badge.custom { background: #E6F4EA; color: #146C2E; font-weight: 600; }
+    .badge.changed { background: #E8F0FE; color: #1A56B0; font-weight: 600; }
+    .badge.copied { background: #E8F0FE; color: #1A56B0; font-weight: 700; }
+    .badge.opened { background: #DDF3EE; color: #087F70; font-weight: 700; }
+    .open-link { font-size: 12px; color: var(--md-primary); text-decoration: none; padding: 4px 8px; border-radius: 6px; }
+    .open-link:hover { background: rgba(103,80,164,.12); }
+    .details { display: none; margin: 10px 0 2px 44px; font-size: 12px; line-height: 1.5; border-top: 1px solid rgba(0,0,0,.08); padding-top: 8px; word-break: break-all; }
+    .result-item.open .details { display: block; }
+    .details dt { font-weight: 600; margin-top: 4px; } .details dd { margin: 0; color: #444; }
+    .details ul { margin: 2px 0 0 16px; padding: 0; }
+    .empty-state { color: var(--md-outline); font-size: 13px; padding: 12px; border-radius: 8px; background: var(--md-surface-container); }
+    .error-box { padding: 12px; border-radius: 8px; background: #FDECEA; color: #B3261E; border: 1px solid #F5C6CB; margin-top: 12px; white-space: pre-line; }
+    .result-item { position: relative; }
+    .result-item.copied { outline: 2px solid var(--md-primary); background: rgba(103,80,164,.18); box-shadow: 0 0 0 3px rgba(103,80,164,.12); }
+    .result-item.opened { outline: 2px dashed #087F70; background: #E6F4F1; box-shadow: 0 0 0 3px rgba(8,127,112,.12); }
+    .result-item.copied.opened { outline: 3px double #087F70; background: #E6F4F1; box-shadow: 0 0 0 3px rgba(103,80,164,.16); }
+    .interaction-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+    .interaction-key { display: inline-flex; align-items: center; gap: 6px; }
+    .interaction-swatch { width: 24px; height: 16px; box-sizing: border-box; border-radius: 4px; background: var(--md-surface-container); }
+    .interaction-swatch.normal { border-left: 5px solid var(--md-outline); }
+    .interaction-swatch.copied { outline: 2px solid var(--md-primary); background: rgba(103,80,164,.18); }
+    .interaction-swatch.opened { outline: 2px dashed #087F70; background: #E6F4F1; }
+    .actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .select-result { display: inline-flex; align-items: center; gap: 4px; color: var(--md-primary); font-size: 11px; cursor: pointer; white-space: nowrap; }
+    .select-result input { margin: 0; accent-color: var(--md-primary); }
+    .btn-mini { border: none; background: none; color: var(--md-primary); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+    .btn-mini:hover { background: rgba(103,80,164,.12); }
+    #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #1D1B20; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; line-height: 1.4; text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: 80vw; z-index: 10; }
+    #toast.show { opacity: 1; transform: translateX(-50%); }
+    .legend { font-size: 12px; color: var(--md-outline); margin-top: 24px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="header">🧟‍♂️🔗 Resultados - Morto-Vivo</div>
+  <div class="container">
+    <div class="info">Acompanhe o progresso; os links são classificados em tempo real. <b>Clique num registro para copiar a URL</b>; use "Abrir" para abrir e destacar o registro, ou "Detalhes" para ver sinais de risco.</div>
+    <div>
+      <div class="progress-text" id="progressText">Preparando análise...</div>
+      <div class="progress-wrapper"><div id="progressBar" class="progress-bar"></div></div>
+    </div>
+
+    <div class="summary" id="summary"></div>
+    <div id="storageWarning" class="error-box" role="alert" style="display:none;"></div>
+
+    <div class="toolbar">
+      <input type="search" id="filtro" placeholder="Filtrar por URL, título, plataforma, motivo, marca…">
+      <select id="filtroTipo" title="Tipo">
+        <option value="">Tipo: todos</option>
+        <option value="site">Sites</option>
+        <option value="marketplace">Marketplaces</option>
+        <option value="social">Redes sociais</option>
+        <option value="messaging">Mensageria</option>
+      </select>
+      <button class="btn" id="btnCsv" disabled>Exportar CSV</button>
+      <button class="btn" id="btnJson" disabled>Exportar JSON</button>
+      <button class="btn" id="btnReport" disabled>Relatório HTML</button>
+      <button class="btn" id="btnCopy" disabled>Copiar mortos (defang)</button>
+      <button class="btn" id="btnRecheck" disabled>Reverificar indeterminados</button>
+      <button class="btn" id="btnOpenSelected" disabled>Abrir selecionados</button>
+      <button class="btn" id="btnClearSelection" disabled>Limpar seleção</button>
+      <button class="btn" id="btnCancelar" style="display:none;">Cancelar análise</button>
+    </div>
+
+    <div id="resultsSections" style="display:none;">
+      <div id="vivoSection" class="category-section"></div>
+      <div id="zumbiSection" class="category-section"></div>
+      <div id="mortoSection" class="category-section"></div>
+      <div id="indetSection" class="category-section"></div>
+    </div>
+    <div id="erro" class="error-box" style="display:none;"></div>
+
+    <div class="legend">
+      <b>Vivo</b>: responde com o conteúdo esperado · <b>Zumbi</b>: responde, mas é erro 5xx/403, página estacionada/padrão ou anúncio pausado ·
+      <b>Morto</b>: NXDOMAIN, 404/410, soft-404, anúncio/perfil removido ou takedown (badge DERRUBADO) ·
+      <b>Indeterminado</b>: anti-bot, login obrigatório ou página que só renderiza com JavaScript. Confiança baixa/média = confirme manualmente antes de reportar.
+      <div class="interaction-legend" aria-label="Legenda dos destaques dos registros">
+        <span class="interaction-key"><span class="interaction-swatch normal" aria-hidden="true"></span>Normal</span>
+        <span class="interaction-key"><span class="interaction-swatch copied" aria-hidden="true"></span>Copiado (contorno roxo)</span>
+        <span class="interaction-key"><span class="interaction-swatch opened" aria-hidden="true"></span>Aberto (contorno verde tracejado)</span>
+        <span>Um registro pode mostrar os dois destaques se for copiado e aberto.</span>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script type="module" src="results.js"></script>
+</body>
+</html>
