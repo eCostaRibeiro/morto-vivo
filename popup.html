@@ -4,67 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Morto-Vivo</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --md-primary: #6750A4;
-      --md-on-primary: #FFFFFF;
-      --md-surface: #FEF7FF;
-      --md-on-surface: #1D1B20;
-      --md-outline: #625D66;
-      --md-muted: #514B56;
-      --md-error: #B3261E;
-      --md-surface-container: #F3EDF7;
-      --md-primary-hover: #553F88;
-      --md-error-surface: #FDECEA;
-      --md-error-border: #F5C6CB;
-      --md-focus: #3D286F;
-    }
-    body { width: 370px; margin: 0; background-color: var(--md-surface); color: var(--md-on-surface); font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif; }
-    .header { background-color: var(--md-primary); color: var(--md-on-primary); padding: 16px; font-size: 18px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24); }
-    .header h1 { margin: 0; font: inherit; }
-    .container { padding: 16px; }
-    .text-field { display: flex; flex-direction: column; margin-bottom: 12px; }
-    .text-field label, summary { font-size: 13px; margin-bottom: 6px; font-weight: 500; }
-    textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--md-outline); border-radius: 4px; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; background: transparent; color: var(--md-on-surface); }
-    #listaUrls { height: 110px; }
-    textarea:focus { outline: 2px solid var(--md-primary); border-color: transparent; }
-    button#btnVerificar { width: 100%; padding: 10px 24px; cursor: pointer; background-color: var(--md-primary); color: var(--md-on-primary); border: none; border-radius: 20px; font-size: 14px; font-weight: 500; transition: background-color .2s; }
-    button#btnVerificar:hover { background-color: var(--md-primary-hover); }
-    .opt { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin: 6px 0; line-height: 1.4; }
-    .opt input { margin-top: 2px; }
-    .opt small { color: var(--md-muted); display: block; font-size: 12px; }
-    details { background: var(--md-surface-container); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
-    summary { cursor: pointer; margin: 0; }
-    .opt + .opt { margin-top: 10px; }
-    .hint { font-size: 12px; color: var(--md-muted); margin: 6px 0 0; line-height: 1.4; }
-    .error-box { margin-top: 12px; padding: 12px; border-radius: 8px; background-color: var(--md-error-surface); color: var(--md-error); border: 1px solid var(--md-error-border); font-size: 13px; line-height: 1.5; white-space: pre-line; max-height: 120px; overflow-y: auto; }
-    .link { background: none; border: none; color: var(--md-primary); font-size: 13px; cursor: pointer; padding: 4px 0; text-decoration: underline; }
-    :focus-visible { outline: 3px solid var(--md-focus); outline-offset: 3px; }
-    textarea:focus-visible { outline-color: var(--md-primary); }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --md-primary: #D0BCFF;
-        --md-on-primary: #381E72;
-        --md-surface: #141218;
-        --md-on-surface: #E6E0E9;
-        --md-outline: #938F99;
-        --md-muted: #CAC4D0;
-        --md-error: #F2B8B5;
-        --md-surface-container: #211F26;
-        --md-primary-hover: #EADDFF;
-        --md-error-surface: #410E0B;
-        --md-error-border: #8C1D18;
-        --md-focus: #D0BCFF;
-      }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
-    }
-    @media (forced-colors: active) {
-      button, textarea, input, summary { forced-color-adjust: auto; }
-    }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header class="header"><h1><span aria-hidden="true">🧟‍♂️🔗</span> Morto-Vivo</h1></header>

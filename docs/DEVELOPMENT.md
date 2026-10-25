@@ -30,8 +30,11 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
 ## Estrutura
 
 - `manifest.json`: versão, permissões, popup, ícones e service worker.
-- `popup.html` / `popup.js`: entrada e normalização da lista, opções e abertura do lote.
-- `results.html` / `results.js`: fila concorrente, progresso, resultados, ações e exportações.
+- `popup.html` / `popup.js` / `popup.css`: entrada e normalização da lista, opções,
+  estilos do popup e abertura do lote.
+- `results.html` / `results.js` / `results.css`: estrutura e estilos da tela de resultados;
+  `results.js` coordena fila, estado e exportações.
+- `lib/resultsView.js`: renderização dos resultados, filtros, seleção e ações da interface.
 - `background.js`: criação das notificações por solicitação da interface.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação das evidências coletadas.
@@ -57,8 +60,9 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
 6. Ao terminar um lote não cancelado, a tela mostra um resumo. Se habilitada, a notificação
    é enviada ao service worker por `chrome.runtime.sendMessage`.
 
-As constantes de concorrência, timeout, retry e limite de lote estão em `results.js` e
-`popup.js`. Preserve limites por host e a validação de segurança ao modificar o fluxo.
+As constantes de concorrência, timeout e retry estão em `results.js`; o limite de URLs por
+lote está em `popup.js`. Preserve limites por host e a validação de segurança ao modificar
+o fluxo.
 
 ## Convenções para mudanças
 
