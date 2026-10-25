@@ -28,6 +28,9 @@ navegador lê os arquivos diretamente desse local.
 Cada lote aceita até 200 URLs únicas e válidas. Se a entrada exceder o limite, a extensão
 avisa e processa somente as primeiras 200.
 
+A revisão da entrada informa quantas URLs únicas são válidas, inválidas ou duplicadas; as
+inválidas também mostram os critérios básicos aceitos.
+
 ## Interpretar os resultados
 
 - **Vivo**: há sinais suficientes de conteúdo público correspondente à URL.
@@ -55,6 +58,9 @@ modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados 
 permanecem indeterminados.
 
 ## Opções
+
+O popup e a página de resultados acompanham automaticamente a preferência de aparência
+clara/escura do sistema operacional ou do navegador.
 
 ### Modo aba
 
@@ -89,15 +95,39 @@ sistema operacional pode silenciá-lo.
 - **Refazer**: executa novamente a verificação de um registro.
 - **Reverificar indeterminados**: cria um novo lote com os resultados indeterminados.
 - **Detalhes**: exibe sinais capturados, motivo, dados de fallback e tempos da análise.
-- **Abrir**: abre o endereço em outra aba. **Abrir todos** pode abrir muitas páginas;
-  confirme o aviso quando aparecer.
+- Clique no cartão para copiar o endereço original; **Copiar URL** oferece a mesma ação em
+  um botão acessível por teclado.
+- Clique no cabeçalho de uma categoria para expandir/recolher os resultados; o botão
+  **Expandir/Recolher** oferece o mesmo controle por teclado.
+- Categorias sem resultados são ocultadas. Em categorias com links, o menu **Ações** reúne
+  **Abrir todos** e **Copiar todos**; abrir muitos links solicita confirmação.
+- O título da categoria visível tem destaque maior para facilitar a leitura da seção atual.
 - Use a caixa **Selecionar** em cada card e **Abrir selecionados** para abrir apenas os
   registros escolhidos. **Limpar seleção** desmarca todos. A seleção é preservada enquanto
   os resultados são atualizados; ao abrir em lote, os cards recebem a mesma marcação verde
   de **ABERTO**. Abrir um link pelo clique do botão do meio do mouse também marca o card.
+- **Selecionar visíveis** e **Desmarcar visíveis** afetam apenas os resultados que passam
+  pelos filtros atuais; seleções ocultas pelo filtro são preservadas. O resumo informa
+  quantos resultados estão visíveis. As ações de seleção aparecem quando há itens
+  selecionados; opções secundárias ficam no menu **Mais seleção**.
+- Busca, tipo, **Reverificar indeterminados** e o **Refazer** de cada cartão ficam sempre
+  visíveis. Exportações e cópia das URLs mortas ficam agrupadas no menu **Ações**. Em cada
+  cartão, **Abrir** e **Copiar URL** também continuam disponíveis diretamente; **Detalhes**
+  ficam no menu **Mais**.
+- Menus fecham automaticamente após escolher uma ação e devolvem o foco ao controle do menu.
+- O progresso mostra itens concluídos, em andamento e na fila, além do tempo decorrido e
+  de uma estimativa restante após os primeiros resultados.
 - **CSV**, **JSON** e **Relatório HTML**: exportam os resultados do lote.
 - **Copiar mortos (defang)**: copia as URLs classificadas como mortas em formato defangado.
 - Os filtros de texto e tipo alteram a visualização, não as verificações já executadas.
+
+### Teclado e tecnologias assistivas
+
+Os controles podem ser percorridos com **Tab** e **Shift+Tab**; use **Enter** ou **Espaço**
+para ativar botões, opções e categorias recolhíveis. Os resultados incluem controles
+separados para copiar, abrir e exibir detalhes, e o progresso/avisos são anunciados por
+leitores de tela compatíveis. A interface também respeita as preferências do sistema para
+redução de movimento e cores de alto contraste.
 
 ## Histórico e armazenamento
 

@@ -83,6 +83,9 @@ As constantes de concorrência, timeout, retry e limite de lote estão em `resul
 4. Para modo aba, use somente URLs conhecidas e um perfil de navegador dedicado.
 5. Para notificações, habilite a opção, confirme o aviso de teste e conclua um lote sem
    cancelá-lo.
+6. Faça uma verificação de teclado (Tab, Shift+Tab, Enter e Espaço), foco visível,
+   nomes dos controles na árvore acessível, anúncios de progresso e contraste do texto.
+   Confirme também que zoom e preferência por redução de movimento não escondem conteúdo.
 
 Testes contra plataformas externas podem variar conforme login, região, cookies, desafios
 anti-bot, mudanças de HTML e limitação de requisições.

@@ -39,8 +39,11 @@ const state = {
   opened: new Set(),
   selected: new Set(),
   copiedUrl: null,
+  announcedSelectionCount: 0,
   total: 0,
   done: 0,
+  active: 0,
+  startedAt: 0,
   running: false,
   cancelled: false,
   abort: null, // AbortController do lote em andamento (botão "Cancelar análise")
@@ -157,9 +160,12 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   state.running = true;
   state.cancelled = false;
   state.abort = new AbortController();
+  state.startedAt = Date.now();
   $('btnCancelar').textContent = 'Cancelar análise';
   state.total = urls.length;
   state.done = 0;
+  state.active = 0;
+  const progressTimer = setInterval(() => setProgress(), 1000);
   setButtons();
   let hist;
   try {
@@ -194,8 +200,9 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
       const url = urls[next++];
       const sem = semFor(url);
       await sem.acquire();
+      state.active++;
+      setProgress();
       try {
-        setProgress(`Analisando ${state.done + 1} de ${state.total}: ${url}`);
         let res;
         const startedAt = performance.now();
         let analysisMs = 0;
@@ -207,7 +214,6 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
           } finally {
             analysisMs = performance.now() - analysisStartedAt;
           }
-          setProgress(`Coletando favicon: ${url}`);
           const enrichmentStartedAt = performance.now();
           try {
             await withTimeout(enrich(res, {
@@ -230,6 +236,7 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
         else applyHistory(hist, res);
         state.results.set(url, res);
       } finally {
+        state.active--;
         sem.release();
       }
       state.done++;
@@ -244,6 +251,7 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
       state.done++;
     }
   }
+  clearInterval(progressTimer);
   await closeReusableTab();
   try {
     await saveHistory(hist);
@@ -272,9 +280,22 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
 function setProgress(text) {
   const pct = state.total ? Math.round((state.done / state.total) * 100) : 0;
   $('progressBar').style.width = `${pct}%`;
+  $('progressTrack').setAttribute('aria-valuenow', String(pct));
+  const pending = Math.max(0, state.total - state.done - state.active);
   $('progressText').textContent = text || (state.running
-    ? `Analisando… ${state.done} de ${state.total}`
+    ? state.cancelled
+      ? `Cancelando: ${state.done} de ${state.total} concluídas; ${state.active} em andamento; ${pending} aguardando cancelamento.`
+      : `Análise em andamento: ${state.done} de ${state.total} concluídas; ${state.active} em andamento; ${pending} na fila.`
     : `Análise concluída: ${state.done} de ${state.total} URLs.`);
+  const elapsedSeconds = state.startedAt ? Math.floor((Date.now() - state.startedAt) / 1000) : 0;
+  const elapsed = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
+  const remaining = state.done > 0 && state.running && !state.cancelled
+    ? Math.max(0, Math.ceil((elapsedSeconds / state.done) * (state.total - state.done)))
+    : null;
+  const eta = remaining === null ? '' : ` · estimativa restante ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+  $('progressMeta').textContent = state.total
+    ? `Tempo decorrido ${elapsed}${eta}`
+    : '';
 }
 
 function setButtons() {
@@ -282,6 +303,7 @@ function setButtons() {
   ['btnCsv', 'btnJson', 'btnReport', 'btnCopy'].forEach((id) => { $(id).disabled = !has; });
   $('btnRecheck').disabled = !has || !all().some((r) => r.status === 'indeterminado');
   $('btnCancelar').style.display = state.running ? '' : 'none';
+  $('btnCancelar').setAttribute('aria-hidden', String(!state.running));
   $('btnCancelar').disabled = !state.running || state.cancelled;
   document.querySelectorAll('.btn-rerun').forEach((button) => { button.disabled = state.running; });
 }
@@ -380,6 +402,12 @@ async function copyText(text) {
 
 function badge(text, cls = '') { return el('span', `badge ${cls}`.trim(), text); }
 
+function closeActionMenu(menu) {
+  if (!menu) return;
+  menu.open = false;
+  menu.querySelector(':scope > summary')?.focus();
+}
+
 function detailRow(dl, k, v) {
   if (v === undefined || v === null || v === '') return;
   dl.appendChild(el('dt', '', k));
@@ -387,7 +415,7 @@ function detailRow(dl, k, v) {
 }
 
 function createItem(r, cat) {
-  const item = el('div', `result-item ${cat.cls}${state.open.has(r.url) ? ' open' : ''}${state.opened.has(r.url) ? ' opened' : ''}${state.copiedUrl === r.url ? ' copied' : ''}`);
+  const item = el('li', `result-item ${cat.cls}${state.open.has(r.url) ? ' open' : ''}${state.opened.has(r.url) ? ' opened' : ''}${state.copiedUrl === r.url ? ' copied' : ''}`);
   const card = el('div', 'result-card');
 
   const fav = el('img', 'result-favicon');
@@ -400,7 +428,7 @@ function createItem(r, cat) {
 
   const content = el('div', 'result-content');
   const titleLine = el('div', 'result-title');
-  titleLine.appendChild(el('span', 'result-title-text', r.title || r.url));
+  titleLine.appendChild(el('h3', 'result-title-text', r.title || r.url));
   titleLine.appendChild(el('span', 'result-status', cat.label + (r.httpStatus ? ` (${r.httpStatus})` : '')));
   content.appendChild(titleLine);
   content.appendChild(el('div', 'result-reason', r.reason));
@@ -423,12 +451,14 @@ function createItem(r, cat) {
   card.appendChild(content);
 
   const actions = el('div', 'actions');
+  actions.addEventListener('click', (e) => e.stopPropagation());
   const selectLabel = el('label', 'select-result');
   selectLabel.addEventListener('click', (e) => e.stopPropagation());
   const select = el('input');
   select.type = 'checkbox';
   select.checked = state.selected.has(r.url);
   select.setAttribute('aria-label', `Selecionar ${r.title || r.url} para abrir em lote`);
+  select.dataset.focusKey = `select:${r.url}`;
   select.addEventListener('click', (e) => e.stopPropagation());
   select.addEventListener('change', (e) => {
     e.stopPropagation();
@@ -442,6 +472,8 @@ function createItem(r, cat) {
   open.href = r.url;
   open.target = '_blank';
   open.rel = 'noopener noreferrer';
+  open.setAttribute('aria-label', `Abrir ${r.title || r.url} em nova aba`);
+  open.dataset.focusKey = `open:${r.url}`;
   const markOpened = (e) => {
     e.stopPropagation();
     state.opened.add(r.url);
@@ -455,8 +487,11 @@ function createItem(r, cat) {
   rerun.type = 'button';
   rerun.disabled = state.running;
   rerun.title = 'Refazer a análise deste link';
+  rerun.setAttribute('aria-label', `Refazer análise: ${r.title || r.url}`);
+  rerun.dataset.focusKey = `rerun:${r.url}`;
   rerun.addEventListener('click', async (e) => {
     e.stopPropagation();
+    closeActionMenu(moreMenu);
     if (state.running) return;
     try {
       await runChecks([r.url], { tabMode: state.settings.tabMode, notifyOnComplete: false });
@@ -466,16 +501,52 @@ function createItem(r, cat) {
   });
   const more = el('button', 'btn-mini', 'Detalhes');
   more.type = 'button';
+  const detailsId = `details-${state.order.indexOf(r.url)}`;
+  more.setAttribute('aria-controls', detailsId);
+  more.setAttribute('aria-expanded', String(state.open.has(r.url)));
+  more.setAttribute('aria-label', `${state.open.has(r.url) ? 'Ocultar' : 'Mostrar'} detalhes: ${r.title || r.url}`);
+  more.dataset.focusKey = `details:${r.url}`;
   more.addEventListener('click', (e) => {
     e.stopPropagation();
+    closeActionMenu(moreMenu);
     item.classList.toggle('open');
-    if (item.classList.contains('open')) state.open.add(r.url); else state.open.delete(r.url);
+    const isOpen = item.classList.contains('open');
+    dl.hidden = !isOpen;
+    more.setAttribute('aria-expanded', String(isOpen));
+    more.setAttribute('aria-label', `${isOpen ? 'Ocultar' : 'Mostrar'} detalhes: ${r.title || r.url}`);
+    if (isOpen) state.open.add(r.url); else state.open.delete(r.url);
   });
-  actions.append(selectLabel, open, rerun, more);
+  const copy = el('button', 'btn-mini', 'Copiar URL');
+  copy.type = 'button';
+  copy.setAttribute('aria-label', `Copiar URL: ${r.title || r.url}`);
+  copy.dataset.focusKey = `copy:${r.url}`;
+  const copyResultUrl = async () => {
+    const ok = await copyText(r.url);
+    if (ok) {
+      state.copiedUrl = r.url;
+      scheduleRender();
+      toast(`URL copiada: ${r.url}`);
+    } else {
+      toast('Não foi possível copiar — selecione e copie manualmente');
+    }
+  };
+  copy.addEventListener('click', copyResultUrl);
+  card.title = 'Clique no cartão para copiar a URL';
+  card.addEventListener('click', copyResultUrl);
+  const moreMenu = el('details', 'action-menu item-more-menu');
+  const moreSummary = el('summary', 'menu-trigger', 'Mais');
+  moreSummary.dataset.focusKey = `more:${r.url}`;
+  moreMenu.appendChild(moreSummary);
+  const moreContent = el('div', 'menu-content');
+  moreContent.appendChild(more);
+  moreMenu.appendChild(moreContent);
+  actions.append(selectLabel, open, copy, rerun, moreMenu);
   card.appendChild(actions);
   item.appendChild(card);
 
   const dl = el('dl', 'details');
+  dl.id = detailsId;
+  dl.hidden = !state.open.has(r.url);
   detailRow(dl, 'URL final', r.finalUrl && r.finalUrl !== r.url ? r.finalUrl : '');
   detailRow(dl, 'URL (defang)', defang(r.url));
   detailRow(dl, 'Verificado em', fmtDate(r.checkedAt));
@@ -495,25 +566,32 @@ function createItem(r, cat) {
   dl.addEventListener('click', (e) => e.stopPropagation());
   item.appendChild(dl);
 
-  item.title = 'Clique para copiar a URL';
-  item.addEventListener('click', async () => {
-    const ok = await copyText(r.url);
-    if (ok) {
-      state.copiedUrl = r.url;
-      scheduleRender();
-      toast(`URL copiada: ${r.url}`);
-    } else {
-      toast('Não foi possível copiar — selecione e copie manualmente');
-    }
-  });
   return item;
 }
 
 function updateSelectionControls() {
   const count = state.selected.size;
+  const visible = all().filter(passesFilters);
+  const selectedVisible = visible.filter((result) => state.selected.has(result.url)).length;
+  $('selectionTools').hidden = count === 0;
+  $('selectionCount').textContent = `${count} selecionado${count === 1 ? '' : 's'}`
+    + (count > selectedVisible ? ` · ${count - selectedVisible} oculto${count - selectedVisible === 1 ? '' : 's'} pelo filtro` : '');
   $('btnOpenSelected').disabled = count === 0;
   $('btnOpenSelected').textContent = count ? `Abrir selecionados (${count})` : 'Abrir selecionados';
   $('btnClearSelection').disabled = count === 0;
+  $('btnSelectVisible').disabled = visible.length === 0 || selectedVisible === visible.length;
+  $('btnClearVisible').disabled = selectedVisible === 0;
+  $('btnSelectVisible').textContent = selectedVisible === visible.length && visible.length
+    ? `Visíveis selecionados (${visible.length})`
+    : selectedVisible
+      ? `Selecionar restantes (${visible.length - selectedVisible})`
+      : `Selecionar visíveis (${visible.length})`;
+  if (count !== state.announcedSelectionCount) {
+    $('selectionStatus').textContent = count
+      ? `${count} ${count === 1 ? 'link selecionado' : 'links selecionados'}.`
+      : 'Nenhum link selecionado.';
+    state.announcedSelectionCount = count;
+  }
 }
 
 function openUrls(urls) {
@@ -529,51 +607,87 @@ function renderCategory(cat, items) {
   const container = $(cat.section);
   container.textContent = '';
   const header = el('div', 'category-header');
-  header.setAttribute('role', 'button');
-  header.tabIndex = 0;
   const left = el('div');
-  left.appendChild(Object.assign(el('h2', 'category-header-title', cat.title)));
+  const title = el('h2', 'category-header-title', cat.title);
+  title.id = `${cat.section}-heading`;
+  left.appendChild(title);
   left.appendChild(el('p', 'category-subtitle', `${items.length} link${items.length === 1 ? '' : 's'}`));
   const meta = el('div', 'category-header-meta');
-  const openAll = el('button', 'btn', 'Abrir todos');
-  openAll.type = 'button';
-  openAll.disabled = !items.length;
-  const copyAll = el('button', 'btn', 'Copiar todos');
-  copyAll.type = 'button';
-  copyAll.disabled = !items.length;
-  const toggle = el('span', 'category-toggle', '▾');
-  meta.append(openAll, copyAll, toggle);
+  const isCollapsed = state.collapsed.has(cat.status);
+  const toggle = el('button', 'category-toggle-button', isCollapsed ? 'Expandir' : 'Recolher');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-expanded', String(!isCollapsed));
+  toggle.setAttribute('aria-label', `${isCollapsed ? 'Expandir' : 'Recolher'} ${cat.title}`);
+  toggle.dataset.focusKey = `category-toggle:${cat.status}`;
+  let actionMenu;
+  let actionSummary;
+  if (items.length) {
+    actionMenu = el('details', 'action-menu category-actions-menu');
+    actionSummary = el('summary', 'menu-trigger', 'Ações');
+    actionSummary.dataset.focusKey = `category-actions:${cat.status}`;
+    const menuContent = el('div', 'menu-content');
+    const openAll = el('button', 'btn', 'Abrir todos');
+    openAll.type = 'button';
+    openAll.setAttribute('aria-label', `Abrir todos os ${items.length} links: ${cat.title}`);
+    const copyAll = el('button', 'btn', 'Copiar todos');
+    copyAll.type = 'button';
+    copyAll.setAttribute('aria-label', `Copiar todos os ${items.length} links: ${cat.title}`);
+    menuContent.append(openAll, copyAll);
+    actionMenu.append(actionSummary, menuContent);
+    meta.appendChild(actionMenu);
+  }
+  meta.appendChild(toggle);
   header.append(left, meta);
 
-  const content = el('div', `category-content${state.collapsed.has(cat.status) ? ' collapsed' : ''}`);
-  toggle.style.transform = state.collapsed.has(cat.status) ? 'rotate(-90deg)' : '';
+  const content = el('div', 'category-content');
+  content.id = `${cat.section}-content`;
+  content.setAttribute('role', 'region');
+  content.setAttribute('aria-labelledby', title.id);
+  content.hidden = isCollapsed;
+  toggle.setAttribute('aria-controls', content.id);
   if (!items.length) {
     content.appendChild(el('div', 'empty-state', 'Nenhum resultado nesta categoria.'));
   } else {
-    const list = el('div', 'result-list');
+    const list = el('ul', 'result-list');
     items.forEach((r) => list.appendChild(createItem(r, cat)));
     content.appendChild(list);
   }
-  header.addEventListener('click', () => {
-    const c = content.classList.toggle('collapsed');
-    if (c) state.collapsed.add(cat.status); else state.collapsed.delete(cat.status);
-    toggle.style.transform = c ? 'rotate(-90deg)' : '';
+  const toggleCategory = () => {
+    const collapsed = !content.hidden;
+    content.hidden = collapsed;
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.textContent = collapsed ? 'Expandir' : 'Recolher';
+    toggle.setAttribute('aria-label', `${collapsed ? 'Expandir' : 'Recolher'} ${cat.title}`);
+    if (collapsed) state.collapsed.add(cat.status); else state.collapsed.delete(cat.status);
+  };
+  header.style.cursor = 'pointer';
+  header.addEventListener('click', (event) => {
+    if (event.target.closest('button, details')) return;
+    toggleCategory();
   });
-  openAll.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openUrls(items.map((r) => r.url));
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleCategory();
   });
-  copyAll.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    const ok = await copyText(items.map((r) => r.url).join('\n'));
-    if (ok) {
-      state.copiedUrl = null;
-      scheduleRender();
-      toast(items.length === 1 ? '1 URL copiada' : `${items.length} URLs copiadas`);
-    } else {
-      toast('Não foi possível copiar as URLs');
-    }
-  });
+  if (actionMenu) {
+    actionMenu.addEventListener('click', (event) => event.stopPropagation());
+    const [openAll, copyAll] = actionMenu.querySelectorAll('button');
+    openAll.addEventListener('click', () => {
+      closeActionMenu(actionMenu);
+      openUrls(items.map((r) => r.url));
+    });
+    copyAll.addEventListener('click', async () => {
+      closeActionMenu(actionMenu);
+      const ok = await copyText(items.map((r) => r.url).join('\n'));
+      if (ok) {
+        state.copiedUrl = null;
+        scheduleRender();
+        toast(items.length === 1 ? '1 URL copiada' : `${items.length} URLs copiadas`);
+      } else {
+        toast('Não foi possível copiar as URLs');
+      }
+    });
+  }
   container.append(header, content);
 }
 
@@ -582,7 +696,20 @@ $('btnOpenSelected').addEventListener('click', () => {
   openUrls(urls);
 });
 $('btnClearSelection').addEventListener('click', () => {
+  closeActionMenu($('btnClearSelection').closest('details'));
   state.selected.clear();
+  $('btnSelectVisible').focus();
+  scheduleRender();
+  updateSelectionControls();
+});
+$('btnSelectVisible').addEventListener('click', () => {
+  all().filter(passesFilters).forEach((result) => state.selected.add(result.url));
+  scheduleRender();
+  updateSelectionControls();
+});
+$('btnClearVisible').addEventListener('click', () => {
+  closeActionMenu($('btnClearVisible').closest('details'));
+  all().filter(passesFilters).forEach((result) => state.selected.delete(result.url));
   scheduleRender();
   updateSelectionControls();
 });
@@ -603,7 +730,10 @@ function renderSummary(list) {
   if (chg) chips.push(['indet', `Mudaram de status: ${chg}`]);
   chips.forEach(([c, t, section]) => {
     const chip = el(section ? 'a' : 'span', `chip ${c}`, t);
-    if (section) chip.href = `#${section}`;
+    if (section) {
+      chip.href = `#${section}`;
+      chip.dataset.focusKey = `summary:${section}`;
+    }
     s.appendChild(chip);
   });
 }
@@ -611,14 +741,26 @@ function renderSummary(list) {
 function render() {
   const list = all();
   if (!list.length) return;
+  const active = document.activeElement;
+  const focusKey = active?.dataset?.focusKey;
   updateSelectionControls();
   $('resultsSections').style.display = 'block';
   renderSummary(list);
   const filtered = list.filter(passesFilters);
+  $('filterSummary').textContent = filtered.length === list.length
+    ? `Exibindo ${filtered.length} de ${list.length} resultados.`
+    : `Exibindo ${filtered.length} de ${list.length} resultados filtrados.`;
+  $('filterEmpty').hidden = filtered.length !== 0;
   CATEGORIES.forEach((cat) => {
     const items = filtered.filter((r) => r.status === cat.status);
+    $(cat.section).hidden = items.length === 0;
     renderCategory(cat, items);
   });
+  if (focusKey) {
+    const replacement = [...document.querySelectorAll('[data-focus-key]')]
+      .find((element) => element.dataset.focusKey === focusKey);
+    replacement?.focus({ preventScroll: true });
+  }
 }
 
 /* ---------- exportação ---------- */
@@ -634,15 +776,26 @@ function download(name, mime, content) {
 
 const stamp = () => new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
 
-$('btnReport').addEventListener('click', () => download(`morto-vivo-relatorio-${stamp()}.html`, 'text/html;charset=utf-8', buildReport(all())));
-$('btnCsv').addEventListener('click', () => download(`morto-vivo-${stamp()}.csv`, 'text/csv;charset=utf-8', toCsv(all())));
-$('btnJson').addEventListener('click', () => download(`morto-vivo-${stamp()}.json`, 'application/json', toJson(all())));
+$('btnReport').addEventListener('click', () => {
+  closeActionMenu($('btnReport').closest('details'));
+  download(`morto-vivo-relatorio-${stamp()}.html`, 'text/html;charset=utf-8', buildReport(all()));
+});
+$('btnCsv').addEventListener('click', () => {
+  closeActionMenu($('btnCsv').closest('details'));
+  download(`morto-vivo-${stamp()}.csv`, 'text/csv;charset=utf-8', toCsv(all()));
+});
+$('btnJson').addEventListener('click', () => {
+  closeActionMenu($('btnJson').closest('details'));
+  download(`morto-vivo-${stamp()}.json`, 'application/json', toJson(all()));
+});
 $('btnCopy').addEventListener('click', async () => {
+  closeActionMenu($('btnCopy').closest('details'));
   const text = all().filter((r) => r.status === 'morto').map((r) => defang(r.url)).join('\n');
   try { await navigator.clipboard.writeText(text); $('btnCopy').textContent = 'Copiado ✓'; } catch { prompt('Copie:', text); }
   setTimeout(() => { $('btnCopy').textContent = 'Copiar mortos (defang)'; }, 2000);
 });
 $('btnRecheck').addEventListener('click', async () => {
+  closeActionMenu($('btnRecheck').closest('details'));
   const urls = all().filter((r) => r.status === 'indeterminado').map((r) => r.url);
   let tabMode = state.settings.tabMode;
   if (!tabMode) {
@@ -651,7 +804,8 @@ $('btnRecheck').addEventListener('click', async () => {
   await runChecks(urls, { tabMode });
 });
 
-['filtro', 'filtroTipo'].forEach((id) => $(id).addEventListener('input', scheduleRender));
+$('filtro').addEventListener('input', scheduleRender);
+$('filtroTipo').addEventListener('change', scheduleRender);
 
 /* ---------- início ---------- */
 
@@ -659,7 +813,7 @@ $('btnRecheck').addEventListener('click', async () => {
   const urls = [...new Set(parseUrlsParam())];
   if (!urls.length) {
     $('erro').textContent = 'URL inválida ou nenhuma URL foi encontrada.';
-    $('erro').style.display = 'block';
+    $('erro').hidden = false;
     $('progressText').textContent = 'Nada para analisar.';
     return;
   }

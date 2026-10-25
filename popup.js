@@ -11,13 +11,13 @@ installButtonSoundFeedback();
 function showStorageNotice(message) {
   const notice = $('storageNotice');
   notice.textContent = message;
-  notice.style.display = 'block';
+  notice.hidden = false;
 }
 
 function clearStorageNotice() {
   const notice = $('storageNotice');
   notice.textContent = '';
-  notice.style.display = 'none';
+  notice.hidden = true;
 }
 
 (async function init() {
@@ -104,19 +104,29 @@ $('btnVerificar').addEventListener('click', async () => {
   const valid = [];
   const invalid = [];
   const seen = new Set();
+  let duplicates = 0;
   // Deduplica depois da normalização para cobrir variações de esquema e formatação.
   for (const line of lines) {
     const n = normalizeUrl(line);
     if (!n) invalid.push(line);
     else if (!seen.has(n)) { seen.add(n); valid.push(n); }
+    else duplicates++;
   }
 
   const out = $('resultados');
   out.innerHTML = '';
+  const summary = document.createElement('p');
+  summary.className = 'hint';
+  summary.setAttribute('role', 'status');
+  summary.textContent = `Entrada revisada: ${valid.length} URL${valid.length === 1 ? '' : 's'} única${valid.length === 1 ? '' : 's'} válida${valid.length === 1 ? '' : 's'}`
+    + `${invalid.length ? `, ${invalid.length} inválida${invalid.length === 1 ? '' : 's'} ignorada${invalid.length === 1 ? '' : 's'}` : ''}`
+    + `${duplicates ? ` e ${duplicates} duplicada${duplicates === 1 ? '' : 's'} removida${duplicates === 1 ? '' : 's'}` : ''}.`;
+  out.appendChild(summary);
   if (invalid.length) {
     const box = document.createElement('div');
     box.className = 'error-box';
-    box.textContent = `URLs inválidas (ignoradas):\n${invalid.join('\n')}`;
+    box.setAttribute('role', 'alert');
+    box.textContent = `URLs inválidas (ignoradas). São aceitos endereços HTTP(S) com hostname válido, sem usuário ou senha; esquemas como ftp:// não são aceitos.\n${invalid.join('\n')}`;
     out.appendChild(box);
   }
   if (!valid.length) {
@@ -129,6 +139,7 @@ $('btnVerificar').addEventListener('click', async () => {
     toCheck = valid.slice(0, MAX_URLS_POR_LOTE);
     const box = document.createElement('div');
     box.className = 'error-box';
+    box.setAttribute('role', 'alert');
     box.textContent = `Lote limitado a ${MAX_URLS_POR_LOTE} URLs por vez (você colou ${valid.length}). `
       + `As ${valid.length - MAX_URLS_POR_LOTE} restantes foram ignoradas nesta execução — rode o restante em um novo lote.`;
     out.appendChild(box);
