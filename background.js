@@ -1,6 +1,7 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || message?.type !== 'mv.createNotification') return;
 
+  // A permissão é conferida no momento do uso, não apenas quando a opção foi ativada.
   chrome.permissions.contains({ permissions: ['notifications'] }, (granted) => {
     const permissionError = chrome.runtime.lastError;
     if (permissionError) {
@@ -31,5 +32,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   });
 
+  // Mantém o canal aberto até a resposta assíncrona de notifications.create.
   return true;
 });

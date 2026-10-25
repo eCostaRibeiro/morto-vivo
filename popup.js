@@ -104,6 +104,7 @@ $('btnVerificar').addEventListener('click', async () => {
   const valid = [];
   const invalid = [];
   const seen = new Set();
+  // Deduplica depois da normalização para cobrir variações de esquema e formatação.
   for (const line of lines) {
     const n = normalizeUrl(line);
     if (!n) invalid.push(line);
