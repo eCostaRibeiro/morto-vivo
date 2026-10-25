@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  defang, normalizeUrl, refang, registrableDomain, safeUrl, sldLabel,
+  defang, normalizeUrl, refang, registrableDomain, safeUrl,
 } from '../lib/normalize.js';
 
 test('refang converts common defanged URL indicators', () => {
@@ -34,7 +34,6 @@ test('registrableDomain handles multi-label suffixes and IP addresses', () => {
   assert.equal(registrableDomain('login.example.com.br'), 'example.com.br');
   assert.equal(registrableDomain('shop.example.co.uk'), 'example.co.uk');
   assert.equal(registrableDomain('192.0.2.1'), '192.0.2.1');
-  assert.equal(sldLabel('login.example.com.br'), 'example');
 });
 
 test('safeUrl returns null for invalid input', () => {

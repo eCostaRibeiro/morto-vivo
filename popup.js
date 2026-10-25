@@ -2,10 +2,8 @@
 import { normalizeUrl } from './lib/normalize.js';
 import { loadSettings, saveSettings, clearHistory, DEFAULT_SETTINGS } from './lib/history.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
-import { containsDebuggerPermission, requestDebuggerPermission } from './lib/permissions.js';
 
 const $ = (id) => document.getElementById(id);
-let brands = '';
 
 installButtonSoundFeedback();
 
@@ -29,26 +27,7 @@ function clearStorageNotice() {
     s = { ...DEFAULT_SETTINGS };
     showStorageNotice(`Não foi possível carregar as configurações salvas; os padrões serão usados nesta sessão. Detalhe: ${(err && err.message) || err}`);
   }
-  brands = s.brands;
   $('tabMode').checked = s.tabMode;
-  if (s.tabMode) {
-    try {
-      const granted = await containsDebuggerPermission();
-      $('tabMode').checked = granted;
-      if (!granted) {
-        showStorageNotice(
-          'A preferência do modo aba está salva, mas a permissão debugger não está concedida. '
-          + 'Ative a opção novamente para solicitá-la.',
-        );
-      }
-    } catch (err) {
-      $('tabMode').checked = false;
-      showStorageNotice(
-        `Não foi possível verificar a permissão do modo aba. Ative a opção novamente `
-        + `para tentar solicitá-la. Detalhe: ${(err && err.message) || err}`,
-      );
-    }
-  }
   $('completionNotification').checked = s.completionNotification;
 })();
 
@@ -57,7 +36,6 @@ async function persist() {
     await saveSettings({
       tabMode: $('tabMode').checked,
       completionNotification: $('completionNotification').checked,
-      brands,
     });
     clearStorageNotice();
     return true;
@@ -66,29 +44,7 @@ async function persist() {
     return false;
   }
 }
-$('tabMode').addEventListener('change', async (event) => {
-  const checkbox = event.currentTarget;
-  if (!checkbox.checked) {
-    await persist();
-    return;
-  }
-  try {
-    const granted = await requestDebuggerPermission();
-    if (!granted) {
-      checkbox.checked = false;
-      showStorageNotice(
-        'Permissão para o modo aba não concedida. As verificações HTTP continuam disponíveis.',
-      );
-      return;
-    }
-    if (!(await persist())) checkbox.checked = false;
-  } catch (err) {
-    checkbox.checked = false;
-    showStorageNotice(
-      `Não foi possível ativar o modo aba. Detalhe: ${(err && err.message) || err}`,
-    );
-  }
-});
+$('tabMode').addEventListener('change', persist);
 $('completionNotification').addEventListener('change', (event) => {
   const checkbox = event.currentTarget;
   if (!checkbox.checked) {

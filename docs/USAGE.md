@@ -43,11 +43,14 @@ resultados são exibidos; não muda a análise nem o status dos links.
 
 - **Vivo**: há sinais suficientes de conteúdo público correspondente à URL.
 - **Zumbi**: o endereço responde, mas apresenta sinais como erro temporário do servidor,
-  página estacionada ou anúncio pausado.
+  página estacionada ou anúncio pausado. Uma tela Cloudflare 522 (“Connection timed out”)
+  também indica timeout entre a Cloudflare e o servidor de origem, não prova de takedown.
 - **Morto**: há evidência explícita de remoção, como NXDOMAIN ou certos códigos/páginas de
   remoção reconhecidos pela plataforma.
 - **Indeterminado**: a evidência não permite concluir com segurança. Isso inclui desafios
-  anti-bot, login obrigatório, timeouts e respostas ambíguas.
+  anti-bot, login obrigatório, timeouts e respostas ambíguas. Um aviso de reputação como
+  “Suspected Phishing” também fica indeterminado: pode ser um bloqueio intersticial e não
+  comprova que o site foi removido ou derrubado.
 
 O resultado é uma avaliação técnica do que estava acessível no momento da consulta. Por
 exemplo, “indisponível publicamente” não prova necessariamente que uma conta ou publicação
@@ -76,11 +79,9 @@ Ative **Modo aba** quando páginas de plataformas compatíveis precisarem ser li
 navegador. A extensão abre uma aba em segundo plano e usa a sessão já autenticada do
 navegador. Para investigação, prefira um perfil de navegador dedicado. O modo aba não é
 usado para domínios desconhecidos nem para LinkedIn. O Facebook Marketplace tem um fluxo
-especial de leitura em aba. Ao ativar a opção, o navegador solicita a permissão de
-depuração, necessária para proteger as requisições da aba contra destinos privados. Se a
-permissão não for concedida, as verificações HTTP continuam disponíveis, mas sem leitura
-em aba. A reverificação pontual também pode solicitar essa permissão quando você escolher
-usar o modo aba.
+especial de leitura em aba. A extensão solicita a permissão de depuração na instalação;
+o Chromium não permite pedi-la como opcional no momento do uso. Ela instala o guard de
+rede que protege as requisições da aba contra destinos privados.
 
 ### Notificação de conclusão
 

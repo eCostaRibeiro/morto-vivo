@@ -2,7 +2,6 @@
 import { checkUrl } from './lib/analyzer.js';
 import { makeDoh } from './lib/dns.js';
 import { detectPlatform } from './lib/rules.js';
-import { parseBrands } from './lib/risk.js';
 import { defang } from './lib/normalize.js';
 import { closeReusableTab, readInTab } from './lib/tabs.js';
 import { enrich } from './lib/evidence.js';
@@ -10,7 +9,6 @@ import { loadHistory, applyHistory, saveHistory, loadSettings, DEFAULT_SETTINGS 
 import { buildReport, toCsv, toJson } from './lib/exports.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
-import { containsDebuggerPermission, requestDebuggerPermission } from './lib/permissions.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
@@ -27,7 +25,6 @@ const state = {
   results: new Map(), // url -> resultado
   order: [],
   settings: null,
-  brands: [],
   collapsed: new Set(),
   open: new Set(),
   opened: new Set(),
@@ -111,7 +108,7 @@ function timeoutResult(url, err) {
     reason: isTimeout
       ? 'Tempo esgotado — a verificação desta URL foi interrompida para não travar a análise das demais'
       : `Erro inesperado ao analisar: ${(err && err.message) || err}`,
-    confidence: 'baixa', tags: isTimeout ? ['timeout'] : ['erro'], sha256: '', info: {}, risk: null,
+    confidence: 'baixa', tags: isTimeout ? ['timeout'] : ['erro'], sha256: '', info: {},
   };
 }
 
@@ -121,7 +118,7 @@ function cancelledResult(url) {
     url, host: safeHost(url), platform: platform?.id || null, platformName: platform?.name || null, kind: platform?.kind || 'site',
     checkedAt: new Date().toISOString(), via: 'fetch', httpStatus: null, finalUrl: '', redirected: false,
     title: '', faviconUrl: '', faviconData: '', status: 'indeterminado',
-    reason: 'Análise cancelada pelo usuário', confidence: 'baixa', tags: ['cancelado'], sha256: '', info: {}, risk: null,
+    reason: 'Análise cancelada pelo usuário', confidence: 'baixa', tags: ['cancelado'], sha256: '', info: {},
   };
 }
 
@@ -171,23 +168,6 @@ function linkAbort(controller, signal) {
 const GLOBAL_CONCURRENCY = 6;
 
 async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
-  if (tabMode) {
-    try {
-      if (!(await containsDebuggerPermission())) {
-        tabMode = false;
-        showStorageWarning(
-          'Modo aba indisponível: a permissão debugger não está concedida. '
-          + 'Esta análise continuará sem leitura em aba; ative Modo aba no popup para solicitá-la.',
-        );
-      }
-    } catch (err) {
-      tabMode = false;
-      showStorageWarning(
-        `Não foi possível verificar a permissão do modo aba; esta análise continuará `
-        + `sem leitura em aba. Detalhe: ${(err && err.message) || err}`,
-      );
-    }
-  }
   state.running = true;
   state.cancelled = false;
   state.abort = new AbortController();
@@ -213,7 +193,6 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     fetchFn: (...a) => fetch(...a),
     doh: makeDoh(),
     readTab: readInTab,
-    brands: state.brands,
     signal: state.abort.signal,
     opts: { tabMode, timeoutMs: 15000 },
   };
@@ -470,23 +449,6 @@ $('btnRecheck').addEventListener('click', async () => {
   if (!tabMode) {
     tabMode = confirm('Reverificar usando o MODO ABA?\n\nAbre as páginas de plataformas conhecidas (Shopee, Instagram, Facebook, X, TikTok…) em abas em segundo plano usando a sua sessão logada. Use um perfil de Chrome dedicado à investigação.');
   }
-  if (tabMode) {
-    try {
-      const granted = await requestDebuggerPermission();
-      if (!granted) {
-        tabMode = false;
-        showStorageWarning(
-          'Permissão para o modo aba não concedida. A reverificação continuará sem leitura em aba.',
-        );
-      }
-    } catch (err) {
-      tabMode = false;
-      showStorageWarning(
-        `Não foi possível ativar o modo aba; a reverificação continuará sem leitura `
-        + `em aba. Detalhe: ${(err && err.message) || err}`,
-      );
-    }
-  }
   await runChecks(urls, { tabMode });
 });
 
@@ -513,7 +475,6 @@ $('filtroTipo').addEventListener('change', scheduleRender);
       + `nesta análise. Detalhe: ${detail}`,
     );
   }
-  state.brands = parseBrands(state.settings.brands);
   state.order = urls;
   await runChecks(urls, { tabMode: state.settings.tabMode });
 })();

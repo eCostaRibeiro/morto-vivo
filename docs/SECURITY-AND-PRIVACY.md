@@ -6,17 +6,16 @@ O manifesto solicita:
 
 - `storage`: salvar configurações e histórico local de verificações.
 - `scripting`: ler o DOM em uma aba do navegador no modo aba.
-- `debugger` como permissão opcional: instalar o guard de rede usado pela leitura em
-  aba. É solicitada quando a pessoa ativa o modo aba; se não for concedida, a análise
-  HTTP continua disponível sem a leitura em aba.
+- `debugger`: instalar o guard de rede usado pela leitura em aba. O Chromium não permite
+  declarar essa permissão como opcional, então ela é solicitada na instalação da extensão,
+  mesmo que o modo aba não seja usado.
 - Acesso HTTP/HTTPS a qualquer host: necessário para analisar URLs arbitrárias.
 - `notifications` como permissão opcional: solicitada somente quando a pessoa ativa a opção
   de notificação.
 
-O navegador pode apresentar avisos de permissões amplas, especialmente para acesso a sites.
-A permissão de depuração só é solicitada quando necessária para o modo aba. Esses acessos
-existem para os fluxos de análise; não habilite o modo aba em um perfil com sessão sensível
-que não seja apropriado para a atividade.
+O navegador pode apresentar avisos de permissões amplas, especialmente para acesso a sites
+e depuração. Esses acessos existem para os fluxos de análise; não habilite o modo aba em um
+perfil com sessão sensível que não seja apropriado para a atividade.
 
 ## Tráfego de rede
 

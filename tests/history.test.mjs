@@ -39,18 +39,18 @@ test('missing stored values still use empty history and default settings', async
   }, async () => {
     assert.deepEqual(await loadHistory(), {});
     assert.deepEqual(await loadSettings(), {
-      tabMode: false, completionNotification: false, brands: '',
+      tabMode: false, completionNotification: false,
     });
   });
 });
 
-test('ignores and removes legacy screenshot settings', async () => {
+test('ignores and removes legacy settings', async () => {
   let storedSettings = {
     tabMode: true,
     completionNotification: true,
     screenshots: true,
     safeShots: false,
-    brands: 'Example=example.com',
+    brands: 'Legacy=legacy.example',
   };
   await withChromeStorage({
     get: async () => ({ mv_settings: storedSettings }),
@@ -58,11 +58,11 @@ test('ignores and removes legacy screenshot settings', async () => {
     remove: async () => {},
   }, async () => {
     assert.deepEqual(await loadSettings(), {
-      tabMode: true, completionNotification: true, brands: 'Example=example.com',
+      tabMode: true, completionNotification: true,
     });
     await saveSettings(await loadSettings());
     assert.deepEqual(storedSettings, {
-      tabMode: true, completionNotification: true, brands: 'Example=example.com',
+      tabMode: true, completionNotification: true,
     });
   });
 });

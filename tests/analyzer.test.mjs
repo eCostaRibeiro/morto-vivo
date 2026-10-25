@@ -23,6 +23,51 @@ test('treats a temporary server failure as a zombie result', () => {
   assert.equal(result.reason, 'Erro de servidor (HTTP 503)');
 });
 
+test('classifies Cloudflare 522 interstitials as server timeouts, not takedowns', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: null,
+    via: 'tab',
+    html: `
+      <title>Connection timed out | Error code 522</title>
+      <p>The initial connection between Cloudflare's network and the origin web server timed out.</p>
+      <p>Your browser is working. Cloudflare is working. Host error.</p>
+    `,
+  });
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.reason, 'Timeout no servidor de origem (Cloudflare 522)');
+  assert.deepEqual(result.tags, []);
+});
+
+test('does not treat a phishing reputation warning as proof of takedown', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: `
+      <h1>Warning</h1>
+      <h2>Suspected Phishing</h2>
+      <p>This website has been reported for potential phishing.</p>
+      <p>Phishing is when a site attempts to steal sensitive information by falsely presenting as a safe source.</p>
+      <a>Learn More</a>
+      <a>Ignore &amp; Proceed</a>
+      <p>Success! Cloudflare</p>
+    `,
+  });
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /aviso de reputação\/possível phishing/i);
+  assert.deepEqual(result.tags, []);
+});
+
+test('keeps explicit provider suspension classified as takedown', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: '<p>This website has been suspended by the hosting provider.</p>',
+  });
+  assert.equal(result.status, 'morto');
+  assert.deepEqual(result.tags, ['takedown']);
+});
+
 test('does not treat Facebook HTTP 404 as proof that content was removed', () => {
   const url = 'https://www.facebook.com/profile.php?id=123';
   const result = classifyPage({

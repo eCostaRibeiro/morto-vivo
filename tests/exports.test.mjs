@@ -13,7 +13,6 @@ const sample = {
   kind: 'site',
   title: '<img src=x onerror=alert(1)>',
   tags: [],
-  risk: { brands: [] },
   previous: null,
   changed: false,
   checkedAt: '2026-10-21T00:00:00.000Z',
@@ -26,6 +25,9 @@ const sample = {
 test('CSV escapes fields and neutralizes spreadsheet formulas', () => {
   const csv = toCsv([sample]);
   assert.match(csv, /^\uFEFF/);
+  const [header, row] = csv.slice(1).split('\r\n');
+  assert.doesNotMatch(header, /marcas/);
+  assert.equal(header.split(';').length, row.split(';').length);
   assert.match(csv, /"'=HYPERLINK\(""https:\/\/bad\.example"",""click""\)"/);
   assert.match(csv, /"<img src=x onerror=alert\(1\)>"/);
 });
@@ -34,6 +36,7 @@ test('HTML report escapes untrusted text and omits legacy screenshot evidence', 
   const report = buildReport([sample], '2026-10-21T00:00:00.000Z');
   assert.doesNotMatch(report, /<img src=x onerror=alert\(1\)>/);
   assert.match(report, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(report, /Marca\(s\) possivelmente envolvida\(s\)/);
   assert.doesNotMatch(report, /data:image\/jpeg;base64,AAAA/);
 });
 
