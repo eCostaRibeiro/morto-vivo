@@ -31,6 +31,14 @@ avisa e processa somente as primeiras 200.
 A revisão da entrada informa quantas URLs únicas são válidas, inválidas ou duplicadas; as
 inválidas também mostram os critérios básicos aceitos.
 
+## Filtros de resultados
+
+Na página de resultados, o filtro **Tipo: todos** pode limitar a lista por categoria de
+endereço. **Mensageria** reúne links reconhecidos de Telegram (`t.me`/`telegram.me`),
+convites e links de conversa do WhatsApp (`chat.whatsapp.com`, `wa.me` e
+`api.whatsapp.com`) e Discord (`discord.gg`/`discord.com`). O filtro só altera quais
+resultados são exibidos; não muda a análise nem o status dos links.
+
 ## Interpretar os resultados
 
 - **Vivo**: há sinais suficientes de conteúdo público correspondente à URL.
