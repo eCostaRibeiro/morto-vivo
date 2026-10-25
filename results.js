@@ -5,13 +5,23 @@ import { detectPlatform } from './lib/rules.js';
 import { defang } from './lib/normalize.js';
 import { closeReusableTab, readInTab } from './lib/tabs.js';
 import { enrich } from './lib/evidence.js';
-import { loadHistory, applyHistory, saveHistory, loadSettings, DEFAULT_SETTINGS } from './lib/history.js';
+import {
+  loadHistory, applyHistory, saveHistory, loadManualClassifications, saveManualClassifications,
+  loadSettings, DEFAULT_SETTINGS,
+} from './lib/history.js';
 import { buildReport, toCsv, toJson } from './lib/exports.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
+import { consumeImportedBatch, ImportedBatchExpiredError } from './lib/importedBatch.js';
+import { norm } from './lib/text.js';
+import {
+  applyManualClassification as applyManualClassificationOverride,
+  clearManualClassification,
+} from './lib/manualClassification.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 function showStorageWarning(message) {
   const warning = $('storageWarning');
@@ -25,6 +35,7 @@ const state = {
   results: new Map(), // url -> resultado
   order: [],
   settings: null,
+  manualClassifications: {},
   collapsed: new Set(),
   open: new Set(),
   opened: new Set(),
@@ -95,6 +106,46 @@ function safeHost(url) {
   } catch {
     return url;
   }
+}
+
+function applyManualClassification(result) {
+  const manualStatus = state.manualClassifications[result.url];
+  if (!manualStatus) return result;
+  return applyManualClassificationOverride(result, manualStatus);
+}
+
+async function setManualClassification(url, status) {
+  const next = { ...state.manualClassifications };
+  if (status) next[url] = status;
+  else delete next[url];
+  await saveManualClassifications(next);
+  state.manualClassifications = next;
+
+  const result = state.results.get(url);
+  if (result) {
+    if (status) applyManualClassificationOverride(result, status);
+    else clearManualClassification(result);
+    scheduleRender();
+  }
+}
+
+async function setManualClassifications(urls, status) {
+  const next = { ...state.manualClassifications };
+  urls.forEach((url) => {
+    if (status) next[url] = status;
+    else delete next[url];
+  });
+  await saveManualClassifications(next);
+  state.manualClassifications = next;
+
+  urls.forEach((url) => {
+    const result = state.results.get(url);
+    if (!result) return;
+    if (status) applyManualClassificationOverride(result, status);
+    else clearManualClassification(result);
+  });
+  state.selected.clear();
+  scheduleRender();
 }
 
 function timeoutResult(url, err) {
@@ -194,7 +245,14 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     doh: makeDoh(),
     readTab: readInTab,
     signal: state.abort.signal,
-    opts: { tabMode, timeoutMs: 15000 },
+    opts: {
+      tabMode,
+      timeoutMs: 15000,
+      customRules: state.settings.customRules.map((rule) => ({
+        ...rule,
+        normalizedTerm: norm(rule.term),
+      })),
+    },
   };
   // Limite global é complementado por limites por plataforma/host para não concentrar requisições num destino.
   const sems = new Map();
@@ -240,6 +298,7 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
         } catch (err) {
           res = timeoutResult(url, err);
         }
+        if (!state.abort.signal.aborted) applyManualClassification(res);
         res.info = res.info || {};
         res.info.timings = {
           analysisMs: Math.round(analysisMs),
@@ -308,8 +367,8 @@ function setProgress(text) {
     : null;
   const eta = remaining === null ? '' : ` · estimativa restante ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
   $('progressMeta').textContent = state.total
-    ? `Tempo decorrido ${elapsed}${eta}`
-    : '';
+    ? `Versão ${EXTENSION_VERSION} · Tempo decorrido ${elapsed}${eta}`
+    : `Versão ${EXTENSION_VERSION}`;
 }
 
 function setButtons() {
@@ -329,6 +388,27 @@ $('btnCancelar').addEventListener('click', () => {
   $('btnCancelar').disabled = true;
   $('btnCancelar').textContent = 'Cancelando…';
   setProgress('Cancelando — as URLs já em andamento estão terminando, as demais serão marcadas como canceladas.');
+});
+
+$('btnManageRules').addEventListener('click', () => window.open('rules.html', '_blank'));
+$('bulkClassification').addEventListener('change', async (event) => {
+  const select = event.currentTarget;
+  if (!select.value || !state.selected.size || state.running) return;
+  const urls = [...state.selected];
+  const status = select.value === 'automatico' ? null : select.value;
+  select.disabled = true;
+  try {
+    await setManualClassifications(urls, status);
+    toast(status
+      ? `${urls.length} ${urls.length === 1 ? 'card movido' : 'cards movidos'} para ${status.toUpperCase()}`
+      : `Classificação automática restaurada em ${urls.length} ${urls.length === 1 ? 'card' : 'cards'}`,
+      3000);
+  } catch (err) {
+    toast(`Não foi possível salvar as classificações do lote: ${(err && err.message) || err}`, 5000);
+  } finally {
+    select.value = '';
+    select.disabled = state.running || !state.selected.size;
+  }
 });
 
 function openUrls(urls) {
@@ -409,6 +489,7 @@ const { render: renderResults } = createResultsView({
   openUrls,
   copyText,
   toast,
+  setManualClassification,
 });
 
 /* ---------- exportação ---------- */
@@ -458,7 +539,25 @@ $('filtroTipo').addEventListener('change', scheduleRender);
 /* ---------- início ---------- */
 
 (async function main() {
-  const urls = [...new Set(parseUrlsParam())];
+  $('extensionVersion').textContent = `Versão ${EXTENSION_VERSION}`;
+  const batchId = new URLSearchParams(location.search).get('batch');
+  let inputUrls;
+  try {
+    inputUrls = batchId ? await consumeImportedBatch(batchId) : parseUrlsParam();
+  } catch (err) {
+    if (err instanceof ImportedBatchExpiredError) {
+      $('erro').textContent = 'A lista importada expirou após 24 horas. Volte ao popup e importe o arquivo novamente.';
+      $('erro').hidden = false;
+      $('progressText').textContent = 'Nada para analisar.';
+      return;
+    }
+    const detail = (err && err.message) || err;
+    $('erro').textContent = `Não foi possível carregar a lista importada do armazenamento local. Detalhe: ${detail}`;
+    $('erro').hidden = false;
+    $('progressText').textContent = 'Nada para analisar.';
+    return;
+  }
+  const urls = [...new Set(inputUrls || [])];
   if (!urls.length) {
     $('erro').textContent = 'URL inválida ou nenhuma URL foi encontrada.';
     $('erro').hidden = false;
@@ -474,6 +573,12 @@ $('filtroTipo').addEventListener('change', scheduleRender);
       `Não foi possível carregar as configurações salvas; os padrões serão usados `
       + `nesta análise. Detalhe: ${detail}`,
     );
+  }
+  try {
+    state.manualClassifications = await loadManualClassifications();
+  } catch (err) {
+    const detail = (err && err.message) || err;
+    showStorageWarning(`Não foi possível carregar as classificações manuais salvas. Detalhe: ${detail}`);
   }
   state.order = urls;
   await runChecks(urls, { tabMode: state.settings.tabMode });

@@ -24,10 +24,18 @@ registros DNS via DNS-over-HTTPS do Cloudflare antes de conectar. Isso significa
 do host é enviado ao serviço DNS usado pela extensão, além das requisições feitas ao próprio
 site. Redirecionamentos são avaliados antes de seguir para o próximo destino.
 
-O modo aba abre páginas de plataformas reconhecidas usando a sessão autenticada do
-navegador, se houver. Um interceptor valida navegações principais e chamadas XHR/Fetch para
-bloquear destinos privados/reservados. Recursos estáticos como imagens, estilos e scripts
-não são interceptados individualmente.
+Em sites genéricos, uma falha de transporte ou timeout em HTTPS pode levar a uma única
+tentativa HTTP sem cookies. O fallback não é usado quando HTTPS responde, quando a validação
+de segurança bloqueia o destino ou para plataformas reconhecidas; redirecionamentos opacos
+podem acionar a tentativa, mas seu destino não é seguido sem validação. Resultados obtidos
+por HTTP são identificados e têm a confiança limitada a média (uma confiança baixa não é
+elevada), pois a conexão não é criptografada.
+
+O modo aba abre páginas de plataformas reconhecidas e, quando explicitamente ativado, pode
+abrir também um site genérico cujo redirecionamento seja opaco ao `fetch`. A página usa a
+sessão autenticada do navegador, se houver, e pode executar código. Um interceptor valida
+navegações principais e chamadas XHR/Fetch para bloquear destinos privados/reservados.
+Recursos estáticos como imagens, estilos e scripts não são interceptados individualmente.
 
 A proteção é uma mitigação de melhor esforço, não uma garantia contra DNS rebinding: o
 navegador pode resolver o host novamente ao conectar. Não use a extensão como substituto
@@ -36,8 +44,19 @@ de um proxy de saída ou de controles de rede corporativos.
 ## Dados locais
 
 - Configurações e histórico são gravados em `chrome.storage.local`.
+- Uma lista TXT importada é validada no popup e armazenada localmente sob um identificador
+  aleatório para chegar à página de resultados; ela permanece disponível para recarga da
+  página por até 24 horas e, após esse prazo, é removida na próxima importação ou abertura
+  de lote. O conteúdo não é enviado a um servidor externo.
+- CSVs de regras são lidos localmente e validados antes de preencher o rascunho; a
+  exportação também é local e só inclui as regras salvas. Arquivos importados/exportados
+  permanecem sob controle de quem usa a extensão. A exportação escapa campos e neutraliza
+  prefixos que planilhas poderiam interpretar como fórmulas.
 - O histórico guarda status anterior, status mais recente, motivos e horários por URL; é
   limitado a 3.000 URLs e até 20 mudanças por URL.
+- Classificações manuais também são guardadas localmente por URL, separadas do histórico
+  automático, limitadas a 3.000 entradas e removidas apenas ao substituí-las manualmente
+  nos cards; **Limpar histórico** não as apaga.
 - O favicon é mantido em memória na sessão de resultados para evitar downloads repetidos;
   não é persistido no histórico.
 - Capturas de tela não são feitas nem armazenadas.

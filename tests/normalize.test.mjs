@@ -21,6 +21,12 @@ test('normalizeUrl rejects unsupported schemes and hostnames without a dot', () 
   assert.equal(normalizeUrl('localhost'), null);
 });
 
+test('normalizeUrl rejects embedded whitespace instead of changing the destination', () => {
+  assert.equal(normalizeUrl('example .com'), null);
+  assert.equal(normalizeUrl('https://example.com/a path'), null);
+  assert.equal(normalizeUrl('https://example.com/a%20path'), 'https://example.com/a%20path');
+});
+
 test('normalizeUrl rejects URLs containing credentials', () => {
   assert.equal(normalizeUrl('https://alice:secret@example.com/path'), null);
   assert.equal(normalizeUrl('https://alice@example.com/path'), null);

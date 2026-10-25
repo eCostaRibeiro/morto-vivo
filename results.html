@@ -7,9 +7,15 @@
   <link rel="stylesheet" href="results.css">
 </head>
 <body>
-  <header class="header"><h1><span aria-hidden="true">🧟‍♂️🔗</span> Resultados - Morto-Vivo</h1></header>
+  <header class="header">
+    <h1><span aria-hidden="true">🧟‍♂️🔗</span> Resultados - Morto-Vivo</h1>
+    <span class="header-version" id="extensionVersion"></span>
+    <button class="header-action" id="btnManageRules" type="button" aria-label="Gerenciar regras de classificação" title="Gerenciar regras de classificação">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.49.49 0 0 0 13.89 2h-3.78a.49.49 0 0 0-.49.42L9.26 4.96c-.59.23-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0-.05.94 7.5 7.5 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.49.39 1.04.71 1.63.94l.36 2.54a.49.49 0 0 0 .49.42h3.78a.49.49 0 0 0 .49-.42l.36-2.54c.59-.23 1.14-.55 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+    </button>
+  </header>
   <main class="container">
-    <p class="info">Acompanhe o progresso; os links são classificados em tempo real. Use os botões de cada registro para copiar ou abrir a URL e consultar os detalhes.</p>
+    <p class="info">Acompanhe o progresso e use os filtros e ações de cada registro. Passe o mouse ou foque um controle para ver uma dica; os resultados são atualizados conforme as verificações terminam.</p>
     <div>
       <div class="progress-text" id="progressText" role="status" aria-live="polite" aria-atomic="true">Preparando análise...</div>
       <div class="progress-meta" id="progressMeta" aria-hidden="true"></div>
@@ -22,9 +28,9 @@
     <section class="toolbar" aria-label="Filtros e ações">
       <div class="filter-controls">
         <label class="sr-only" for="filtro">Filtrar por URL, título, plataforma ou motivo</label>
-        <input type="search" id="filtro" placeholder="Filtrar resultados…">
+        <input type="search" id="filtro" placeholder="Filtrar resultados…" title="Busca na URL, URL final, título, plataforma, motivo e status">
         <label class="sr-only" for="filtroTipo">Filtrar por tipo de endereço</label>
-        <select id="filtroTipo">
+        <select id="filtroTipo" title="Filtra a lista pelo tipo de endereço; não altera a análise nem o status">
           <option value="">Tipo: todos</option>
           <option value="site">Sites</option>
           <option value="marketplace">Marketplaces</option>
@@ -32,29 +38,39 @@
           <option value="messaging">Mensageria</option>
         </select>
       </div>
-      <button class="btn" id="btnSelectVisible" disabled data-focus-key="select-visible">Selecionar visíveis</button>
-      <button class="btn" id="btnRecheck" disabled>Reverificar indeterminados</button>
+      <button class="btn" id="btnSelectVisible" disabled data-focus-key="select-visible" title="Seleciona todos os resultados que passam pelos filtros atuais">Selecionar visíveis</button>
+      <button class="btn" id="btnRecheck" disabled title="Executa um novo lote somente para os resultados indeterminados">Reverificar indeterminados</button>
       <div class="selection-tools" id="selectionTools" hidden>
         <span class="selection-count" id="selectionCount"></span>
-        <button class="btn" id="btnOpenSelected" disabled data-focus-key="open-selected">Abrir selecionados</button>
+        <button class="btn" id="btnOpenSelected" disabled data-focus-key="open-selected" title="Abre em novas abas todos os resultados selecionados, inclusive os ocultos pelo filtro">Abrir selecionados</button>
+        <label class="selection-classification-label" for="bulkClassification">Classificação em lote
+          <select id="bulkClassification" disabled data-focus-key="bulk-classification" title="Altera a classificação manual de todos os cards selecionados, inclusive os ocultos pelo filtro">
+            <option value="">Mover selecionados para…</option>
+            <option value="vivo">Vivo</option>
+            <option value="zumbi">Zumbi</option>
+            <option value="morto">Morto</option>
+            <option value="indeterminado">Indeterminado</option>
+            <option value="automatico">Restaurar automáticas</option>
+          </select>
+        </label>
         <details class="action-menu selection-menu">
-          <summary class="menu-trigger">Mais seleção</summary>
+          <summary class="menu-trigger" title="Ações para limpar a seleção, incluindo itens ocultos pelo filtro">Mais seleção</summary>
           <div class="menu-content">
-            <button class="btn" id="btnClearVisible" disabled data-focus-key="clear-visible">Desmarcar visíveis</button>
-            <button class="btn" id="btnClearSelection" disabled data-focus-key="clear-selection">Limpar seleção</button>
+            <button class="btn" id="btnClearVisible" disabled data-focus-key="clear-visible" title="Desmarca somente os resultados que passam pelos filtros atuais">Desmarcar visíveis</button>
+            <button class="btn" id="btnClearSelection" disabled data-focus-key="clear-selection" title="Desmarca todos os resultados, inclusive os ocultos pelo filtro">Limpar seleção</button>
           </div>
         </details>
       </div>
       <details class="action-menu" id="actionsMenu">
-        <summary class="menu-trigger">Ações</summary>
+        <summary class="menu-trigger" title="Exporta todos os resultados ou copia apenas as URLs classificadas como mortas">Ações</summary>
         <div class="menu-content">
-          <button class="btn" id="btnCsv" disabled>Exportar CSV</button>
-          <button class="btn" id="btnJson" disabled>Exportar JSON</button>
-          <button class="btn" id="btnReport" disabled>Relatório HTML</button>
-          <button class="btn" id="btnCopy" disabled>Copiar mortos (defang)</button>
+          <button class="btn" id="btnCsv" disabled title="Baixa uma planilha CSV com status, motivo, plataforma e evidências resumidas">Exportar CSV</button>
+          <button class="btn" id="btnJson" disabled title="Baixa os dados completos dos resultados em JSON">Exportar JSON</button>
+          <button class="btn" id="btnReport" disabled title="Gera um relatório HTML legível, com URLs defangadas">Relatório HTML</button>
+          <button class="btn" id="btnCopy" disabled title="Copia somente as URLs mortas, em formato defang para evitar links clicáveis">Copiar mortos (defang)</button>
         </div>
       </details>
-      <button class="btn" id="btnCancelar" style="display:none;">Cancelar análise</button>
+      <button class="btn" id="btnCancelar" style="display:none;" title="Interrompe a fila; URLs ainda não iniciadas serão marcadas como canceladas">Cancelar análise</button>
     </section>
     <span id="selectionStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
     <p id="filterSummary" class="filter-summary" role="status" aria-live="polite" aria-atomic="true"></p>

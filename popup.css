@@ -35,6 +35,27 @@ body {
   margin: 0;
   font: inherit;
 }
+.header-action {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  margin-left: auto;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-primary);
+  cursor: pointer;
+}
+.header-action:hover {
+  background: rgba(255,255,255,.16);
+}
+.header-action svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
 .container {
   padding: 16px;
 }
@@ -63,12 +84,102 @@ textarea {
 #listaUrls {
   height: 110px;
 }
+.url-counter {
+  margin: 3px 0 0;
+  color: var(--md-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.url-counter.over-limit {
+  color: var(--md-error);
+  font-weight: 600;
+}
+.import-section {
+  margin: 12px 0;
+  padding: 0;
+  background: transparent;
+}
+.import-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px;
+  color: var(--md-primary);
+  list-style-position: inside;
+}
+.import-section > summary small {
+  margin-left: auto;
+  color: var(--md-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.import-content {
+  display: grid;
+  gap: 6px;
+  padding: 4px 0 8px 18px;
+}
+#arquivoUrls {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--md-primary);
+  border-radius: 18px;
+  color: var(--md-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.file-picker:hover {
+  background: var(--md-surface-container);
+}
+.file-picker:has(+ #arquivoUrls:focus-visible) {
+  outline: 2px solid var(--md-focus);
+  outline-offset: 2px;
+}
+.import-content > .hint {
+  margin: 0;
+}
+.import-preview {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#btnVerificarImportadas {
+  width: 100%;
+  padding: 9px 16px;
+  border: 1px solid var(--md-primary);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--md-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+#btnVerificarImportadas:hover:not(:disabled) {
+  background: var(--md-surface-container);
+}
+#btnVerificarImportadas:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
 textarea:focus {
   outline: 2px solid var(--md-primary);
   border-color: transparent;
 }
-button#btnVerificar {
+#btnVerificar {
   width: 100%;
+  min-height: 42px;
   padding: 10px 24px;
   cursor: pointer;
   background-color: var(--md-primary);
@@ -78,9 +189,17 @@ button#btnVerificar {
   font-size: 14px;
   font-weight: 500;
   transition: background-color .2s;
+  margin: 2px 0 10px;
 }
-button#btnVerificar:hover {
+#btnVerificar:hover {
   background-color: var(--md-primary-hover);
+}
+#btnVerificar.in-import {
+  margin: 4px 0 0;
+}
+button:focus-visible, .file-picker:focus-visible {
+  outline: 2px solid var(--md-focus);
+  outline-offset: 2px;
 }
 .opt {
   display: flex;
@@ -108,6 +227,9 @@ summary {
   cursor: pointer;
   margin: 0;
 }
+summary:hover, .link:hover {
+  color: var(--md-primary-hover);
+}
 .opt + .opt {
   margin-top: 10px;
 }
@@ -129,6 +251,17 @@ summary {
   white-space: pre-line;
   max-height: 120px;
   overflow-y: auto;
+  animation: notice-enter .2s ease-out both;
+}
+@keyframes notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .link {
   background: none;

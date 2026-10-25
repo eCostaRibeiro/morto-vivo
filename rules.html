@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Regras personalizadas - Morto-Vivo</title>
+  <link rel="stylesheet" href="rules.css">
+</head>
+<body>
+  <header class="header">
+    <h1><span aria-hidden="true">🧟‍♂️🔗</span> Regras de classificação</h1>
+  </header>
+  <main class="container">
+    <p class="intro">Crie regras para classificar páginas que contenham frases específicas. Elas são aplicadas a futuras análises. Use um trecho distintivo de até 1.000 caracteres; quebras de linha viram espaços e links no formato Markdown são comparados pelo texto visível.</p>
+
+    <section class="guide" aria-labelledby="guideTitle">
+      <h2 id="guideTitle">Como as regras funcionam</h2>
+      <ul>
+        <li>Escolha o status e informe uma frase literal que apareça no título ou nos primeiros 50.000 caracteres do texto capturado.</li>
+        <li>A comparação ignora maiúsculas/minúsculas e acentos. Não use expressões regulares.</li>
+        <li>Se mais de uma frase corresponder, a primeira regra da lista será usada.</li>
+        <li>CAPTCHA, login, códigos HTTP explícitos e evidências definitivas da plataforma continuam tendo prioridade.</li>
+        <li>Uma regra personalizada resulta em confiança média e exige confirmação manual.</li>
+      </ul>
+      <p>Exemplo: status <strong>Morto</strong> com a frase <code>anúncio removido</code>.</p>
+    </section>
+
+    <section aria-labelledby="rulesTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="rulesTitle">Suas regras</h2>
+          <p id="ruleCount" class="muted"></p>
+        </div>
+        <div class="section-actions">
+          <button class="button secondary" id="btnExportRules" type="button" disabled title="Exporta as regras salvas em CSV">Exportar CSV</button>
+          <label class="button secondary file-button" for="rulesCsvFile">Importar CSV</label>
+          <button class="button secondary" id="btnAddRule" type="button" title="Adiciona uma linha de regra">Adicionar regra</button>
+        </div>
+      </div>
+      <input id="rulesCsvFile" type="file" accept=".csv,text/csv" aria-describedby="importRulesHelp">
+      <p id="importRulesHelp" class="muted">A importação substitui o rascunho atual. Revise as regras e clique em “Salvar regras” para aplicar.</p>
+      <div id="rulesList" class="rules-list"></div>
+      <p id="emptyState" class="empty-state" hidden>Nenhuma regra personalizada. Adicione uma para começar.</p>
+    </section>
+
+    <div class="actions">
+      <button class="button primary" id="btnSaveRules" type="button">Salvar regras</button>
+      <button class="button secondary" id="btnClose" type="button">Fechar</button>
+    </div>
+    <p id="message" class="message" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+  <script type="module" src="rules.js"></script>
+</body>
+</html>

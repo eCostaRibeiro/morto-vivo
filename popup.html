@@ -7,27 +7,49 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header class="header"><h1><span aria-hidden="true">🧟‍♂️🔗</span> Morto-Vivo</h1></header>
+  <header class="header">
+    <h1><span aria-hidden="true">🧟‍♂️🔗</span> Morto-Vivo</h1>
+    <button class="header-action" id="btnManageRules" type="button" aria-label="Gerenciar regras de classificação" title="Gerenciar regras de classificação">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.49.49 0 0 0 13.89 2h-3.78a.49.49 0 0 0-.49.42L9.26 4.96c-.59.23-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0-.05.94 7.5 7.5 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.49.39 1.04.71 1.63.94l.36 2.54a.49.49 0 0 0 .49.42h3.78a.49.49 0 0 0 .49-.42l.36-2.54c.59-.23 1.14-.55 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+    </button>
+  </header>
 
   <main class="container">
     <div class="text-field">
       <label for="listaUrls">Cole as URLs (uma por linha — aceita hxxp / [.] de relatórios):</label>
-      <textarea id="listaUrls" aria-describedby="urlHint" placeholder="https://google.com&#10;hxxps://site-falso[.]top/login&#10;https://www.olx.com.br/d/anuncio-...&#10;https://www.instagram.com/perfil_falso/"></textarea>
-      <p class="hint" id="urlHint">Uma URL por linha. URLs com hxxp e [.] também são aceitas.</p>
+      <textarea id="listaUrls" aria-describedby="urlHint urlCounter" title="Cole uma URL completa por linha. Esquemas hxxp e hosts defangados com [.] são convertidos; espaços internos são rejeitados." placeholder="https://google.com&#10;hxxps://site-falso[.]top/login&#10;https://www.olx.com.br/d/anuncio-...&#10;https://www.instagram.com/perfil_falso/"></textarea>
+      <p class="hint" id="urlHint">Uma URL por linha. URLs defangadas com hxxp e [.] são aceitas; espaços internos e endereços inválidos são rejeitados.</p>
+      <p class="url-counter" id="urlCounter" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
 
-    <details>
-      <summary>Opções</summary>
-      <label class="opt"><input type="checkbox" id="tabMode" aria-labelledby="tabModeLabel" aria-describedby="tabModeHelp">
-        <span><span id="tabModeLabel">Modo aba para Shopee, Instagram, Facebook, X, TikTok…</span><small id="tabModeHelp">Recomendado para Facebook: abre a página em segundo plano e lê o conteúdo renderizado. Usa a SUA sessão logada (use um perfil de Chrome dedicado). A permissão de depuração é declarada pela extensão e protege as requisições da aba. Nunca é usado em domínios desconhecidos nem no LinkedIn.</small></span></label>
-      <label class="opt"><input type="checkbox" id="completionNotification" aria-labelledby="completionNotificationLabel" aria-describedby="completionNotificationHelp">
-        <span><span id="completionNotificationLabel">Notificação do navegador ao concluir o monitoramento</span><small id="completionNotificationHelp">Opcional. O navegador pedirá permissão ao ativar. O aviso dentro da tela de resultados continua disponível.</small></span></label>
-      <button class="link" id="btnLimpar" type="button">Limpar histórico de verificações</button>
-    </details>
-
-    <button id="btnVerificar">Verificar Status</button>
+    <span id="verifyButtonAnchor" hidden></span>
+    <button id="btnVerificar" title="Valida, remove duplicatas e analisa até 200 URLs válidas">Verificar Status</button>
     <div id="storageNotice" class="error-box" role="alert" aria-atomic="true" hidden></div>
     <div id="resultados"></div>
+
+    <details class="import-section" id="importSection">
+      <summary title="Importa uma lista TXT maior do que o limite de URLs coladas">
+        <span>Importar lista TXT</span>
+        <small>Até 500 URLs</small>
+      </summary>
+      <div class="import-content">
+        <p class="hint">Um endereço por linha; a lista é validada e deduplicada antes da análise.</p>
+        <label class="file-picker button-secondary" for="arquivoUrls">Escolher arquivo TXT</label>
+        <input id="arquivoUrls" type="file" accept=".txt,text/plain" aria-describedby="importHint">
+        <p class="hint" id="importHint">Arquivo de texto UTF-8, até 1 MB. A importação é processada localmente.</p>
+        <p id="importPreview" class="import-preview" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+    </details>
+
+    <details>
+      <summary title="Configura o uso de abas em segundo plano e os avisos de conclusão">Opções</summary>
+      <label class="opt"><input type="checkbox" id="tabMode" title="Ativa a leitura do conteúdo renderizado em plataformas compatíveis e sites com redirecionamento opaco" aria-labelledby="tabModeLabel" aria-describedby="tabModeHelp">
+        <span><span id="tabModeLabel">Modo aba para plataformas e redirecionamentos não verificáveis</span><small id="tabModeHelp">Abre páginas em segundo plano para ler o conteúdo renderizado, inclusive sites genéricos quando o navegador oculta o destino de um redirecionamento. O guard valida os destinos de navegação e de XHR/Fetch antes de permitir a requisição; recursos como imagens, estilos e scripts não são validados individualmente. A página pode executar código e usar a SUA sessão logada (use um perfil de navegador dedicado). Quando há regras personalizadas, aguarda até 7 segundos após o carregamento.</small></span></label>
+      <label class="opt"><input type="checkbox" id="completionNotification" title="Solicita permissão opcional do navegador para avisar quando o lote terminar" aria-labelledby="completionNotificationLabel" aria-describedby="completionNotificationHelp">
+        <span><span id="completionNotificationLabel">Notificação do navegador ao concluir o monitoramento</span><small id="completionNotificationHelp">Opcional. O navegador pedirá permissão ao ativar. O aviso dentro da tela de resultados continua disponível.</small></span></label>
+      <button class="link" id="btnLimpar" type="button" title="Apaga os resultados anteriores salvos localmente; não afeta o lote atual">Limpar histórico de verificações</button>
+    </details>
+
   </main>
 
   <script type="module" src="popup.js"></script>

@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { checkUrl } from '../lib/analyzer.js';
+import { checkUrl, markHttpFallback } from '../lib/analyzer.js';
 import { classifyPage } from '../lib/classification.js';
-import { NetworkSafetyError } from '../lib/networkSafety.js';
 import { detectPlatform } from '../lib/rules.js';
 
 test('classifies HTTP 404 and 410 as dead links', () => {
@@ -36,7 +35,122 @@ test('classifies Cloudflare 522 interstitials as server timeouts, not takedowns'
   });
   assert.equal(result.status, 'zumbi');
   assert.equal(result.reason, 'Timeout no servidor de origem (Cloudflare 522)');
+  assert.deepEqual(result.tags, ['cloudflare']);
+});
+
+test('classifies Cloudflare origin errors consistently across common error codes', () => {
+  const examples = [
+    [521, 'Web server is down'],
+    [522, 'Connection timed out'],
+    [523, 'Origin is unreachable'],
+    [524, 'A timeout occurred'],
+    [525, 'SSL handshake failed'],
+    [526, 'Invalid SSL certificate'],
+    [530, 'Origin connection error'],
+    [1016, 'Origin DNS error'],
+  ];
+  for (const [code, message] of examples) {
+    const result = classifyPage({
+      url: 'https://example.com/',
+      status: null,
+      html: `<title>Error ${code}: ${message}</title><p>Cloudflare host error</p>`,
+    });
+    assert.equal(result.status, 'zumbi', `Cloudflare ${code}`);
+    assert.match(result.reason, new RegExp(`Cloudflare ${code}`));
+    assert.deepEqual(result.tags, ['cloudflare']);
+  }
+});
+
+test('does not mistake Cloudflare branding and a price for an origin error', () => {
+  const result = classifyPage({
+    url: 'https://shop.example/',
+    status: 200,
+    html: '<title>Loja online</title><main>Produtos e conexão segura.</main><footer>Protected by Cloudflare</footer><p>R$ 530,00</p>',
+  });
+  assert.equal(result.status, 'vivo');
+  assert.doesNotMatch(result.reason, /Cloudflare/i);
   assert.deepEqual(result.tags, []);
+});
+
+test('does not mistake a blog explaining Cloudflare 522 for an error page', () => {
+  const result = classifyPage({
+    url: 'https://example.com/blog/cloudflare-522',
+    status: 200,
+    html: '<title>O que significa o erro 522 da Cloudflare?</title><article>O código 522 descreve uma conexão entre a Cloudflare e a origem que pode demorar. Este guia explica como investigar a causa, revisar configurações e entender o que o erro significa para operadores de sites.</article>',
+  });
+  assert.equal(result.status, 'vivo');
+  assert.doesNotMatch(result.reason, /Cloudflare/i);
+});
+
+test('does not classify a short FAQ about Cloudflare 522 as an origin error', () => {
+  const result = classifyPage({
+    url: 'https://example.com/faq',
+    status: 200,
+    html: '<title>Erro 522 Cloudflare: connection timed out</title><p>Este erro significa que a conexão expirou. Consulte nosso FAQ para entender o diagnóstico e os próximos passos.</p>',
+  });
+  assert.equal(result.status, 'vivo');
+  assert.doesNotMatch(result.reason, /Cloudflare/i);
+});
+
+test('recognizes a short Cloudflare error page served with HTTP 200 when it has the page signature', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: '<title>Error 522: Connection timed out</title><p>Cloudflare host error. Ray ID: 123abc</p>',
+  });
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.reason, 'Timeout no servidor de origem (Cloudflare 522)');
+});
+
+test('prefers the Cloudflare code in the title over unrelated numbers in page text', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: null,
+    html: '<title>Error 522: Connection timed out</title><p>Cloudflare host error. Reference number 521.</p>',
+  });
+  assert.equal(result.reason, 'Timeout no servidor de origem (Cloudflare 522)');
+});
+
+test('prefers Cloudflare error 1016 from the body over HTTP 530', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 530,
+    html: '<title>Cloudflare error</title><p>Error 1016: Origin DNS error</p>',
+  });
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.reason, 'Erro de DNS na origem (Cloudflare 1016)');
+});
+
+test('classifies Cloudflare 1020 access denial as indeterminate', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 403,
+    html: '<title>Error 1020: Access denied | Cloudflare</title><p>You do not have access to this website.</p>',
+  });
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /bloqueio de acesso da Cloudflare \(1020\)/i);
+  assert.ok(result.tags.includes('anti-bot'));
+});
+
+test('does not treat a blog mentioning Cloudflare 1020 as an access block', () => {
+  const result = classifyPage({
+    url: 'https://example.com/blog',
+    status: 200,
+    html: '<title>Cloudflare error 1020: what it means</title><article>This article explains the Cloudflare 1020 access denied error and how a site owner can investigate it.</article>',
+  });
+  assert.equal(result.status, 'vivo');
+  assert.doesNotMatch(result.reason, /Cloudflare|bloqueio de acesso/i);
+});
+
+test('tags a Cloudflare HTTP 520 response even without a recognizable error body', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 520,
+    html: '<title>Cloudflare</title><p>Unknown error</p>',
+  });
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.reason, 'Erro desconhecido do servidor de origem (Cloudflare 520)');
+  assert.ok(result.tags.includes('cloudflare'));
 });
 
 test('does not treat a phishing reputation warning as proof of takedown', () => {
@@ -58,6 +172,17 @@ test('does not treat a phishing reputation warning as proof of takedown', () => 
   assert.deepEqual(result.tags, []);
 });
 
+test('does not classify a large legitimate article as a phishing warning', () => {
+  const article = `This article discusses phishing detection, warning messages, and deceptive sites. ${'More background and research context. '.repeat(700)}`;
+  const result = classifyPage({
+    url: 'https://example.com/security-article',
+    status: 200,
+    html: `<title>Research article about phishing warnings</title><article>${article}</article>`,
+  });
+  assert.equal(result.status, 'vivo');
+  assert.doesNotMatch(result.reason, /phishing/i);
+});
+
 test('keeps explicit provider suspension classified as takedown', () => {
   const result = classifyPage({
     url: 'https://example.com/',
@@ -66,6 +191,154 @@ test('keeps explicit provider suspension classified as takedown', () => {
   });
   assert.equal(result.status, 'morto');
   assert.deepEqual(result.tags, ['takedown']);
+});
+
+test('applies literal custom rules to generic page text and marks their result', () => {
+  const result = classifyPage({
+    url: 'https://example.com/item',
+    status: 200,
+    html: '<title>Produto</title><p>Este anúncio foi encerrado</p>',
+    customRules: [{ status: 'morto', term: 'anuncio foi encerrado' }],
+  });
+  assert.equal(result.status, 'morto');
+  assert.match(result.reason, /Regra personalizada/);
+  assert.deepEqual(result.tags, ['custom']);
+});
+
+test('passes custom rules through the URL analysis pipeline', async () => {
+  const result = await checkUrl('https://example.com/item', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => new Response(
+      '<title>Product</title><p>Current listing is unavailable</p>',
+      { status: 200, headers: { 'content-type': 'text/html' } },
+    ),
+    opts: { customRules: [{ status: 'morto', term: 'current listing is unavailable' }] },
+  });
+  assert.equal(result.status, 'morto');
+  assert.deepEqual(result.tags, ['custom']);
+});
+
+test('custom rules do not override anti-bot, login, or explicit HTTP evidence', () => {
+  const customRules = [{ status: 'vivo', term: 'produto disponível' }];
+  const challenge = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: '<title>Just a moment</title><p>Produto disponível</p>',
+    customRules,
+  });
+  assert.equal(challenge.status, 'indeterminado');
+  assert.ok(!challenge.tags.includes('custom'));
+
+  const loginUrl = 'https://www.instagram.com/example/';
+  const login = classifyPage({
+    url: loginUrl,
+    status: 200,
+    html: '<title>Instagram</title><p>Log in to continue. Produto disponível</p>',
+    platform: detectPlatform(new URL(loginUrl)),
+    customRules,
+  });
+  assert.equal(login.status, 'indeterminado');
+  assert.ok(!login.tags.includes('custom'));
+
+  const notFound = classifyPage({
+    url: 'https://example.com/',
+    status: 404,
+    html: '<p>Produto disponível</p>',
+    customRules,
+  });
+  assert.equal(notFound.status, 'morto');
+  assert.match(notFound.reason, /HTTP 404/);
+  assert.ok(!notFound.tags.includes('custom'));
+});
+
+test('login banners and hidden password controls do not block normal public-profile classification', () => {
+  const url = 'https://www.instagram.com/example/';
+  const platform = detectPlatform(new URL(url));
+  for (const hasPassword of [false, true]) {
+    const result = classifyPage({
+      url,
+      finalUrl: url,
+      status: 200,
+      via: 'tab',
+      html: '<title>Example public profile</title>',
+      renderedText: 'Log in or sign up to see more. Public profile with posts and photos.',
+      hasPassword,
+      platform,
+    });
+    assert.equal(result.status, 'vivo');
+  }
+});
+
+test('a login wall still blocks a matching custom rule without changing default classification', () => {
+  const url = 'https://www.instagram.com/example/';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: 200,
+    via: 'tab',
+    html: '<title>Example public profile</title>',
+    renderedText: 'Log in or sign up to see more.',
+    customRules: [{ status: 'morto', term: 'example public profile' }],
+    platform: detectPlatform(new URL(url)),
+  });
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /barreira de login/i);
+  assert.ok(!result.tags.includes('custom'));
+});
+
+test('custom rules match whole terms rather than arbitrary substrings', () => {
+  const options = {
+    url: 'https://example.com/',
+    status: 200,
+    customRules: [{ status: 'morto', term: 'morto' }],
+  };
+  const partial = classifyPage({ ...options, html: '<title>Mortorista</title>' });
+  const whole = classifyPage({ ...options, html: '<title>Conteúdo morto</title>' });
+  assert.equal(partial.status, 'vivo');
+  assert.equal(whole.status, 'morto');
+});
+
+test('custom rules match normalized multi-line terms in footer text beyond the initial excerpt', () => {
+  const term = 'Copyright © 1999-2026 GoDaddy, LLC. Todos os direitos reservados. Aviso de isenção de responsabilidade: as referências a qualquer empresa, produto ou serviço neste Site não são controladas pela GoDaddy.com LLC e não constituem ou implicam sua associação a esses terceiros ou seu endosso deles. Política de Privacidade';
+  const pageText = `${'Conteúdo público da página com informações úteis. '.repeat(160)}\n${term}`;
+  const result = classifyPage({
+    url: 'https://betfusion.vip/lander',
+    status: 200,
+    html: `<title>Betfusion</title><main>${pageText}</main>`,
+    customRules: [{
+      status: 'morto',
+      term: 'Copyright © 1999-2026 GoDaddy, LLC. Todos os direitos reservados.\nAviso de isenção de responsabilidade: as referências a qualquer empresa, produto ou serviço neste Site não são controladas pela GoDaddy.com LLC e não constituem ou implicam sua associação a esses terceiros ou seu endosso deles.\n[Política de Privacidade](https://betfusion.vip/lander#!)',
+    }],
+  });
+  assert.equal(result.status, 'morto');
+  assert.ok(result.tags.includes('custom'));
+});
+
+test('classifies an HTTP 200 non-text response as an available download', async () => {
+  const result = await checkUrl('https://example.com/app.apk', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+      status: 200,
+      headers: { 'content-type': 'application/vnd.android.package-archive' },
+    }),
+  });
+  assert.equal(result.status, 'vivo');
+  assert.match(result.reason, /arquivo para download/i);
+  assert.equal(result.info.contentType, 'application/vnd.android.package-archive');
+  assert.ok(result.tags.includes('download'));
+});
+
+test('marks cross-domain redirects as alive with medium confidence and an explicit tag', () => {
+  const result = classifyPage({
+    url: 'https://old-example.com/item',
+    finalUrl: 'https://destination.example.net/',
+    status: 200,
+    html: '<title>Destination</title><p>Available</p>',
+  });
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.confidence, 'média');
+  assert.ok(result.tags.includes('redirect-externo'));
+  assert.match(result.reason, /destination\.example\.net/);
 });
 
 test('does not treat Facebook HTTP 404 as proof that content was removed', () => {
@@ -286,6 +559,152 @@ test('classifies parked pages as zombies and keeps JavaScript platform shells in
   assert.match(instagram.reason, /modo aba/);
 });
 
+test('classifies the GoDaddy parked landing page for betfusion.vip as dead', () => {
+  const result = classifyPage({
+    url: 'https://betfusion.vip/',
+    status: 200,
+    html: `
+      <title>betfusion.vip</title>
+      <p>betfusion.vip está hospedado gratuitamente, cortesia da GoDaddy.com.</p>
+      <button>Adquira este domínio</button>
+      <p>Copyright © 1999-2026 GoDaddy, LLC. Todos os direitos reservados.</p>
+    `,
+  });
+  assert.equal(result.status, 'morto');
+  assert.match(result.reason, /domínio estacionado pela godaddy/i);
+  assert.ok(result.tags.includes('parked'));
+  assert.ok(!result.tags.includes('takedown'));
+});
+
+test('recognizes the GoDaddy parking lander HTML shell', () => {
+  const result = classifyPage({
+    url: 'https://betfusion.vip/lander',
+    status: 200,
+    html: '<!doctype html><html><head><script>window.LANDER_SYSTEM="PW"</script><script defer src="https://img1.wsimg.com/parking-lander/static/js/main.js"></script></head><body><div id="root"></div></body></html>',
+  });
+  assert.equal(result.status, 'morto');
+  assert.match(result.reason, /godaddy/i);
+  assert.ok(result.tags.includes('parked'));
+  assert.ok(!result.tags.includes('takedown'));
+});
+
+test('classifies concise domain-sale pages from known parking providers as parked, not takedown', () => {
+  const examples = [
+    ['Sedo', '<title>Example domain is for sale</title><p>Make an offer for this domain.</p><script src="https://sedoparking.com/lander.js"></script>'],
+    ['Afternic', '<title>Buy this domain</title><p>This domain may be for sale.</p><footer>Listed with Afternic</footer>'],
+    ['ParkingCrew', '<title>Domain parking</title><p>This domain is parked. Purchase this domain.</p><img src="https://parkingcrew.net/logo.png">'],
+  ];
+  for (const [provider, html] of examples) {
+    const result = classifyPage({ url: 'https://example.com/lander', status: 200, html });
+    assert.equal(result.status, 'morto', provider);
+    assert.match(result.reason, /domínio (estacionado|anunciado para venda)/i);
+    assert.equal(result.confidence, 'alta');
+    assert.ok(result.tags.includes('parked'));
+    assert.ok(!result.tags.includes('takedown'));
+  }
+});
+
+test('does not treat registrar or marketplace names as parking-provider evidence', () => {
+  const examples = [
+    '<title>What does "domain is parked" mean?</title><article>Namecheap provides domain registration and DNS. This guide explains parked-domain notices.</article>',
+    '<title>What does "domain is parked" mean?</title><article>Dan.com is a marketplace for domain names. This guide explains parked-domain notices.</article>',
+    '<title>What does "domain is parked" mean?</title><article>Namecheap is a domain registrar. This guide explains that parked domains may show this notice.</article>',
+  ];
+  for (const html of examples) {
+    const result = classifyPage({ url: 'https://example.com/article', status: 200, html });
+    assert.equal(result.status, 'vivo');
+    assert.ok(!result.tags.includes('parked'));
+    assert.ok(!result.tags.includes('takedown'));
+  }
+});
+
+test('marks a short domain-sale call to action as parked with medium confidence', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: '<title>Buy this domain</title><main>Purchase this domain today.</main>',
+  });
+  assert.equal(result.status, 'morto');
+  assert.equal(result.confidence, 'média');
+  assert.ok(result.tags.includes('parked'));
+  assert.ok(!result.tags.includes('takedown'));
+});
+
+test('does not classify an article discussing domain sales or provider names as parked', () => {
+  for (const html of [
+    '<title>What does "this domain is for sale" mean?</title><article>This guide explains how to buy a domain and what to check before making an offer.</article>',
+    '<title>Sedo domain management guide</title><article>How to connect your domain and configure DNS.</article>',
+    '<title>What does "this domain is for sale" mean?</title><article>Sedo explains how to buy a domain and configure DNS.</article>',
+  ]) {
+    const result = classifyPage({ url: 'https://example.com/guide', status: 200, html });
+    assert.equal(result.status, 'vivo');
+  }
+});
+
+test('follows a same-origin JavaScript redirect to detect the GoDaddy parking page', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://betfusion.vip/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (url) => {
+      requestedUrls.push(String(url));
+      if (String(url) === 'https://betfusion.vip/') {
+        return new Response(
+          '<html><head><script>window.onload=function(){window.location.href="/lander"}</script></head><body></body></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        );
+      }
+      return new Response(
+        '<!doctype html><html><head><script>window.LANDER_SYSTEM="PW"</script><script defer src="https://img1.wsimg.com/parking-lander/static/js/main.js"></script></head><body><div id="root"></div></body></html>',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+  });
+  assert.deepEqual(requestedUrls, ['https://betfusion.vip/', 'https://betfusion.vip/lander']);
+  assert.equal(result.status, 'morto');
+  assert.equal(result.finalUrl, 'https://betfusion.vip/lander');
+  assert.match(result.reason, /godaddy/i);
+});
+
+test('follows a same-origin lander redirect for another explicit parking provider', async () => {
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (url) => new Response(
+      String(url).endsWith('/')
+        ? '<html><script>window.location.href="/lander"</script></html>'
+        : '<title>This domain is for sale</title><p>Make an offer for this domain.</p><footer>Afternic</footer>',
+      { status: 200, headers: { 'content-type': 'text/html' } },
+    ),
+  });
+  assert.equal(result.finalUrl, 'https://example.com/lander');
+  assert.equal(result.status, 'morto');
+  assert.match(result.reason, /provedor de parking/i);
+});
+
+test('does not follow a cross-origin JavaScript redirect', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (url) => {
+      requestedUrls.push(String(url));
+      return new Response(
+        '<html><script>window.location.href="//other.example/path"</script></html>',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+  });
+  assert.deepEqual(requestedUrls, ['https://example.com/']);
+  assert.notEqual(result.finalUrl, 'https://other.example/path');
+});
+
+test('does not classify GoDaddy copyright text alone as a dead domain', () => {
+  const result = classifyPage({
+    url: 'https://example.com/',
+    status: 200,
+    html: '<title>Example shop</title><main>Products available now.</main><footer>Copyright GoDaddy, LLC.</footer>',
+  });
+  assert.equal(result.status, 'vivo');
+});
+
 test('treats network timeouts as indeterminate even when DNS resolves publicly', async () => {
   const timeout = new Error('network timeout');
   timeout.name = 'AbortError';
@@ -295,7 +714,176 @@ test('treats network timeouts as indeterminate even when DNS resolves publicly',
     opts: { timeoutMs: 50 },
   });
   assert.equal(result.status, 'indeterminado');
-  assert.equal(result.reason, 'Sem resposta (timeout)');
+  assert.match(result.reason, /^Sem resposta \(timeout\)/);
+  assert.match(result.reason, /tentativa HTTP também falhou/);
+});
+
+test('retries HTTPS transport failures over guarded HTTP and marks the result as lower confidence', async () => {
+  const requests = [];
+  const result = await checkUrl('https://example.com/gone', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requests.push(requestUrl);
+      if (requestUrl.startsWith('https:')) throw new TypeError('TLS connection failed');
+      return new Response('<title>Not found</title>', {
+        status: 404,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+  assert.deepEqual(requests, ['https://example.com/gone', 'http://example.com/gone']);
+  assert.equal(result.status, 'morto');
+  assert.equal(result.httpStatus, 404);
+  assert.equal(result.finalUrl, 'http://example.com/gone');
+  assert.equal(result.confidence, 'média');
+  assert.ok(result.tags.includes('http-fallback'));
+  assert.match(result.reason, /resultado obtido via HTTP após falha HTTPS/);
+  assert.equal(result.info.httpFallback, 'Tentativa HTTP usada após falha da conexão HTTPS');
+});
+
+test('classifies an HTTP 409 response after an HTTPS protocol failure as a zombie response', async () => {
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      if (requestUrl.startsWith('https:')) throw new TypeError('ERR_SSL_VERSION_OR_CIPHER_MISMATCH');
+      return new Response('<title>Conflict</title>', {
+        status: 409,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.httpStatus, 409);
+  assert.ok(result.tags.includes('http-fallback'));
+});
+
+test('keeps a transport failure with public DNS indeterminate when HTTP also fails', async () => {
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => { throw new TypeError('ERR_SSL_VERSION_OR_CIPHER_MISMATCH'); },
+  });
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.confidence, 'baixa');
+  assert.ok(result.tags.includes('rede'));
+  assert.match(result.reason, /DNS resolve para endereço público/);
+  assert.match(result.reason, /tentativa HTTP também falhou/);
+});
+
+test('caps HTTP fallback confidence without raising a low-confidence result', () => {
+  const low = markHttpFallback({ status: 'indeterminado', reason: 'DNS incerto', confidence: 'baixa', tags: ['dns'] });
+  assert.equal(low.confidence, 'baixa');
+  assert.ok(low.tags.includes('http-fallback'));
+
+  const high = markHttpFallback({ status: 'morto', reason: 'HTTP 404', confidence: 'alta', tags: [] });
+  assert.equal(high.confidence, 'média');
+});
+
+test('tries guarded HTTP after an opaque HTTPS redirect without following the hidden target', async () => {
+  const requests = [];
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requests.push(requestUrl);
+      if (requestUrl.startsWith('https:')) {
+        return { type: 'opaqueredirect', status: 0, headers: new Headers() };
+      }
+      return new Response('<title>Example site</title><main>Public content</main>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+  assert.deepEqual(requests, ['https://example.com/', 'http://example.com/']);
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.confidence, 'média');
+  assert.ok(result.tags.includes('http-fallback'));
+});
+
+test('uses the explicitly enabled guarded tab mode for generic opaque redirects', async () => {
+  let tabReads = 0;
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => ({ type: 'opaqueredirect', status: 0, headers: new Headers() }),
+    readTab: async (url) => {
+      tabReads++;
+      return {
+        url,
+        html: '<title>Example shop</title><main>Products available now</main>',
+        text: 'Products available now',
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+  assert.equal(tabReads, 1);
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.via, 'tab');
+  assert.equal(result.info.tabFallback, 'DOM da página lido em aba');
+});
+
+test('does not open generic opaque redirects in a tab unless tab mode is enabled', async () => {
+  let tabReads = 0;
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => ({ type: 'opaqueredirect', status: 0, headers: new Headers() }),
+    readTab: async () => {
+      tabReads++;
+      return { url: 'https://example.com/', html: '<title>Example</title>', text: 'Example' };
+    },
+    opts: { tabMode: false, timeoutMs: 50 },
+  });
+  assert.equal(tabReads, 0);
+  assert.equal(result.status, 'indeterminado');
+});
+
+test('retries over HTTP after an HTTPS timeout when the analysis was not cancelled', async () => {
+  const requests = [];
+  const timeout = new Error('request timed out');
+  timeout.name = 'AbortError';
+  const result = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requests.push(requestUrl);
+      if (requestUrl.startsWith('https:')) throw timeout;
+      return new Response('<title>Example shop</title><main>Products available</main>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+  assert.deepEqual(requests, ['https://example.com/', 'http://example.com/']);
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.confidence, 'média');
+  assert.ok(result.tags.includes('http-fallback'));
+});
+
+test('does not retry HTTP when HTTPS succeeds or network safety rejects the destination', async () => {
+  let requestCount = 0;
+  const successfulHttps = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => {
+      requestCount++;
+      return new Response('<title>Example shop</title><main>Products available</main>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+  assert.equal(successfulHttps.status, 'vivo');
+  assert.equal(requestCount, 1);
+  assert.equal(successfulHttps.info.httpFallback, undefined);
+
+  requestCount = 0;
+  const rejectedDestination = await checkUrl('https://example.com/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['10.0.0.1'] }),
+    fetchFn: async () => {
+      requestCount++;
+      throw new TypeError('must not be called');
+    },
+  });
+  assert.equal(rejectedDestination.status, 'indeterminado');
+  assert.equal(requestCount, 0);
+  assert.equal(rejectedDestination.info.httpFallback, undefined);
 });
 
 test('does not treat DNS failures or sinkholes as proof that a domain is dead', async () => {
@@ -322,11 +910,13 @@ test('does not treat DNS failures or sinkholes as proof that a domain is dead', 
 
 test('uses tab mode for supported platforms when the initial fetch fails', async () => {
   let tabReads = 0;
+  let tabOptions;
   const result = await checkUrl('https://instagram.com/example_profile', {
     doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
     fetchFn: async () => { throw new TypeError('Failed to fetch'); },
-    readTab: async (url) => {
+    readTab: async (url, options) => {
       tabReads++;
+      tabOptions = options;
       return {
         url,
         html: '<title>Example Profile • Instagram</title>',
@@ -334,11 +924,16 @@ test('uses tab mode for supported platforms when the initial fetch fails', async
         hasPassword: false,
       };
     },
-    opts: { tabMode: true, timeoutMs: 50 },
+    opts: {
+      tabMode: true,
+      timeoutMs: 50,
+      customRules: [{ status: 'morto', term: 'profile unavailable' }],
+    },
   });
   assert.equal(tabReads, 1);
   assert.equal(result.via, 'tab');
   assert.equal(result.status, 'vivo');
+  assert.equal(tabOptions.settle, 7000);
 });
 
 test('uses guarded tab mode when fetch cannot expose a platform redirect', async () => {

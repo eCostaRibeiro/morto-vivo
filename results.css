@@ -61,6 +61,31 @@ body {
   margin: 0;
   font: inherit;
 }
+.header-version {
+  font-size: 12px;
+  opacity: .85;
+}
+.header-action {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  margin-left: auto;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-primary);
+  cursor: pointer;
+}
+.header-action:hover {
+  background: rgba(255,255,255,.16);
+}
+.header-action svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
 .container {
   padding: 16px;
   max-width: 1100px;
@@ -84,7 +109,7 @@ body {
   height: 100%;
   background: var(--md-primary);
   border-radius: 999px;
-  transition: width .25s ease;
+  transition: width .3s cubic-bezier(.2, .7, .2, 1);
 }
 .progress-text {
   font-size: 14px;
@@ -172,6 +197,9 @@ a.chip {
 .btn:hover {
   background: var(--md-button-hover);
 }
+.menu-trigger:hover, .category-toggle-button:hover {
+  background: var(--md-button-hover);
+}
 .btn[disabled] {
   opacity: .5;
   cursor: default;
@@ -219,6 +247,19 @@ a.chip {
   border-radius: 10px;
   background: var(--md-surface-container);
   box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
+}
+.action-menu:not([open]) > .menu-content {
+  display: flex;
+}
+.action-menu[open] > .menu-content {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0s;
 }
 .menu-content .btn {
   border-radius: 6px;
@@ -239,6 +280,25 @@ a.chip {
 .selection-count {
   color: var(--md-muted);
   font-size: 13px;
+}
+.selection-classification-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--md-muted);
+  font-size: 12px;
+}
+.selection-classification-label select {
+  max-width: 190px;
+  padding: 7px 10px;
+  border: 1px solid var(--md-button-border);
+  border-radius: 999px;
+  background: var(--md-button-bg);
+  color: var(--md-primary);
+  font-size: 12px;
+}
+.selection-classification-label select:disabled {
+  opacity: .55;
 }
 .selection-menu > summary {
   padding: 7px 10px;
@@ -287,10 +347,23 @@ a.chip {
   min-width: 130px;
 }
 .category-content {
-  padding: 12px 0;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows .22s ease;
 }
-.category-content[hidden] {
-  display: none;
+.category-content.collapsed {
+  grid-template-rows: 0fr;
+}
+.category-content-inner {
+  min-height: 0;
+  overflow: visible;
+  padding: 12px 0;
+  opacity: 1;
+  transition: opacity .16s ease;
+}
+.category-content.collapsed .category-content-inner {
+  overflow: hidden;
+  opacity: 0;
 }
 .result-list {
   display: flex;
@@ -301,14 +374,35 @@ a.chip {
   list-style: none;
 }
 .result-item {
+  position: relative;
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--md-surface-container);
   font-size: 13px;
   border-left: 6px solid transparent;
+  transition: background-color .18s ease, box-shadow .18s ease, outline-color .18s ease;
+}
+.result-item.result-enter {
+  animation: result-enter .24s ease-out both;
+}
+.result-item.menu-open {
+  z-index: 1;
+}
+@keyframes result-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .result-card {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .result-card button, .result-card a, .result-card label {
   cursor: pointer;
@@ -327,11 +421,6 @@ a.chip {
 }
 .result-item.indet {
   border-left-color: var(--md-unknown);
-}
-.result-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 .result-favicon {
   width: 32px;
@@ -423,6 +512,11 @@ a.chip {
   color: var(--md-custom-text);
   font-weight: 600;
 }
+.badge.manual {
+  background: var(--md-info-surface);
+  color: var(--md-info-text);
+  font-weight: 700;
+}
 .badge.changed {
   background: var(--md-info-surface);
   color: var(--md-info-text);
@@ -437,6 +531,9 @@ a.chip {
   background: var(--md-opened-surface);
   color: var(--md-opened-text);
   font-weight: 700;
+}
+.badge[title], .result-status[title] {
+  cursor: help;
 }
 .open-link {
   font-size: 13px;
@@ -456,9 +553,26 @@ a.chip {
   border-top: 1px solid var(--md-details-border);
   padding-top: 8px;
   word-break: break-all;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  border-top-color: transparent;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height .22s ease,
+    opacity .16s ease,
+    margin .22s ease,
+    padding-top .22s ease,
+    border-color .16s ease;
 }
-.details[hidden] {
-  display: none;
+.details.expanded {
+  max-height: 1200px;
+  margin: 10px 0 2px 44px;
+  padding-top: 8px;
+  border-top-color: var(--md-details-border);
+  opacity: 1;
 }
 .details dt {
   font-weight: 600;
@@ -480,6 +594,7 @@ a.chip {
   background: var(--md-surface-container);
 }
 .error-box {
+  animation: notice-enter .2s ease-out both;
   padding: 12px;
   border-radius: 8px;
   background: var(--md-danger-surface);
@@ -487,9 +602,6 @@ a.chip {
   border: 1px solid var(--md-danger-border);
   margin-top: 12px;
   white-space: pre-line;
-}
-.result-item {
-  position: relative;
 }
 .result-item.copied {
   outline: 2px solid var(--md-primary);
@@ -579,7 +691,26 @@ a.chip {
   font-size: 13px;
 }
 .item-more-menu .menu-content {
-  min-width: 120px;
+  min-width: 190px;
+}
+.manual-classification-label {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  color: var(--md-on-surface);
+  font-size: 12px;
+}
+.manual-classification {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--md-outline);
+  border-radius: 6px;
+  background: var(--md-surface);
+  color: inherit;
+  font: inherit;
+}
+.manual-classification:disabled {
+  opacity: .6;
 }
 :focus-visible {
   outline: 3px solid var(--md-focus);
@@ -609,6 +740,16 @@ a.chip {
 #toast.show {
   opacity: 1;
   transform: translateX(-50%);
+}
+@keyframes notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .legend {
   font-size: 13px;

@@ -30,8 +30,10 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
 ## Estrutura
 
 - `manifest.json`: versão, permissões, popup, ícones e service worker.
-- `popup.html` / `popup.js` / `popup.css`: entrada e normalização da lista, opções,
-  estilos do popup e abertura do lote.
+- `popup.html` / `popup.js` / `popup.css`: entrada colada, importação TXT, contador,
+  opções, estilos do popup e abertura do lote.
+- `rules.html` / `rules.js` / `rules.css`: edição, validação e importação/exportação CSV
+  das regras personalizadas.
 - `results.html` / `results.js` / `results.css`: estrutura e estilos da tela de resultados;
   `results.js` coordena fila, estado e exportações.
 - `lib/resultsView.js`: renderização dos resultados, filtros, seleção e ações da interface.
@@ -42,32 +44,74 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
 - `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba.
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS.
 - `lib/evidence.js`: enriquecimento de evidências, incluindo favicon.
-- `lib/history.js`: preferências e histórico no `chrome.storage.local`.
+- `lib/history.js` / `lib/customRules.js`: preferências, histórico, validação das regras
+  personalizadas e conversão CSV no `chrome.storage.local`.
+- `lib/urlList.js` / `lib/importedBatch.js`: parsing e deduplicação de listas, e transferência
+  local de lotes TXT, preservados para atualização da página por até 24 horas.
+  As operações que atualizam o índice compartilhado são serializadas com Web Locks para
+  evitar perda de entradas entre popups e páginas de resultados simultâneos.
 - `lib/exports.js`: geração de CSV, JSON e relatório HTML.
 - `lib/audioFeedback.js`: som curto para controles acionáveis.
 - `tests/`: regressões automatizadas em Node.js.
 
 ## Fluxo de uma análise
 
-1. O popup normaliza, valida e deduplica as entradas e limita o lote a 200 URLs.
+1. O popup normaliza, valida e deduplica as entradas coladas (até 200 URLs) ou importadas
+   de TXT (até 500 URLs, arquivo máximo de 1 MB); listas importadas são passadas à página
+   por armazenamento local, sem codificá-las na URL, e podem ser recuperadas após atualizar
+   a página de resultados por até 24 horas.
 2. A página de resultados executa até seis verificações concorrentes, com limites adicionais
    por plataforma/host.
 3. Cada URL passa pela coordenação em `lib/analyzer.js`; evidências adicionais como favicon
-   são coletadas separadamente.
+   são coletadas separadamente. Um redirecionamento JavaScript só é seguido quando o HTML
+   é um shell pequeno sem texto visível e o destino é um caminho da mesma origem; o destino
+   passa novamente pela validação de segurança da rede. Para sites genéricos, falhas de
+   transporte ou timeout em HTTPS podem acionar uma única tentativa HTTP alternativa,
+   também validada; o resultado fica identificado e a confiança é limitada a média, sem
+   aumentar uma confiança baixa já existente. Respostas HTTPS
+   válidas e plataformas reconhecidas não usam esse fallback. Um redirecionamento opaco
+   pode motivar a mesma tentativa HTTP, mas o destino oculto nunca é seguido. Se DNS aponta
+   para endereço público e a conexão/TLS falha sem resposta HTTP, mantenha Indeterminado com
+   baixa confiança e tag `rede`; esse erro também pode representar bloqueio de rede local.
+   Timeouts e bloqueios de segurança continuam indeterminados.
 4. As evidências são classificadas. Falhas inesperadas ou timeouts produzem resultado
    indeterminado em vez de interromper toda a fila.
 5. O histórico é atualizado apenas para verificações que não foram canceladas.
 6. Ao terminar um lote não cancelado, a tela mostra um resumo. Se habilitada, a notificação
    é enviada ao service worker por `chrome.runtime.sendMessage`.
 
-As constantes de concorrência, timeout e retry estão em `results.js`; o limite de URLs por
-lote está em `popup.js`. Preserve limites por host e a validação de segurança ao modificar
-o fluxo.
+As constantes de concorrência, timeout e retry estão em `results.js`; os limites de entrada
+colada e TXT estão em `popup.js` e `lib/urlList.js`. Preserve limites por host e a validação
+de segurança ao modificar o fluxo. O CSV de regras usa `status;frase`, com BOM UTF-8,
+escaping de campos e proteção contra fórmulas de planilha.
 
 ## Convenções para mudanças
 
 - Mantenha a classificação conservadora: ausência de resposta, anti-bot, login e evidência
   ambígua não devem ser promovidos a “Morto” nem a “Vivo”.
+- Landers de domínio à venda exigem uma chamada explícita para compra/oferta com sinal de
+  provedor conhecido de parking ou uma declaração explícita de que o domínio está estacionado
+  junto a um provedor conhecido. Menções informativas e o caminho `/lander`, sem essas
+  evidências, não comprovam estacionamento. Registradores e marketplaces, como Namecheap e
+  Dan.com, não contam como provedores de parking; sinalize estacionamento com a tag `parked`,
+  não com `takedown`, e use confiança média para páginas curtas de venda.
+- A detecção de erro Cloudflare deve usar o status HTTP ou evidência específica em uma
+  resposta curta no título/início do texto; menções de rodapé ou artigos explicativos não
+  são evidência de falha. Uma resposta HTTP 200 também precisa da assinatura da página de
+  erro (por exemplo, `Ray ID`). Quando HTTP 530 acompanha o código 1016 no corpo, prefira
+  exibir o erro de DNS da origem; HTTP 520 deve manter a identificação/tag Cloudflare mesmo
+  sem um corpo reconhecível. O código 1020 representa bloqueio de acesso e só deve ser
+  classificado como indeterminado com HTTP 403.
+- Regras personalizadas são frases literais com limites de palavra, limitadas a 1.000
+  caracteres e identificadas no resultado; normalizam espaços e convertem links Markdown
+  para o texto visível. A busca cobre o título e até 50.000 caracteres do texto capturado.
+  As regras não devem sobrepor CAPTCHA, barreira de login correspondente, status HTTP
+  explícito nem evidência definitiva da plataforma. São avaliadas após sinais de remoção,
+  soft-404 e páginas estacionadas, antes do fallback genérico de plataforma.
+- Classificações manuais são uma sobreposição local de apresentação por URL, mantida
+  separada das evidências automáticas. Aplique a mesma regra às ações individuais e em
+  lote; exports devem incluir os dois valores. Uma classificação manual como Morto não
+  pode adicionar a tag de takedown nem alterar o histórico automático.
 - Faça alterações de classificação acompanhadas de casos de regressão em `tests/`.
 - Propague erros de armazenamento e APIs do navegador para avisos explícitos; evite falhas
   silenciosas.
