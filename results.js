@@ -10,6 +10,7 @@ import { loadHistory, applyHistory, saveHistory, loadSettings, DEFAULT_SETTINGS 
 import { buildReport, toCsv, toJson } from './lib/exports.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
+import { containsDebuggerPermission, requestDebuggerPermission } from './lib/permissions.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
@@ -170,6 +171,23 @@ function linkAbort(controller, signal) {
 const GLOBAL_CONCURRENCY = 6;
 
 async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
+  if (tabMode) {
+    try {
+      if (!(await containsDebuggerPermission())) {
+        tabMode = false;
+        showStorageWarning(
+          'Modo aba indisponível: a permissão debugger não está concedida. '
+          + 'Esta análise continuará sem leitura em aba; ative Modo aba no popup para solicitá-la.',
+        );
+      }
+    } catch (err) {
+      tabMode = false;
+      showStorageWarning(
+        `Não foi possível verificar a permissão do modo aba; esta análise continuará `
+        + `sem leitura em aba. Detalhe: ${(err && err.message) || err}`,
+      );
+    }
+  }
   state.running = true;
   state.cancelled = false;
   state.abort = new AbortController();
@@ -451,6 +469,23 @@ $('btnRecheck').addEventListener('click', async () => {
   let tabMode = state.settings.tabMode;
   if (!tabMode) {
     tabMode = confirm('Reverificar usando o MODO ABA?\n\nAbre as páginas de plataformas conhecidas (Shopee, Instagram, Facebook, X, TikTok…) em abas em segundo plano usando a sua sessão logada. Use um perfil de Chrome dedicado à investigação.');
+  }
+  if (tabMode) {
+    try {
+      const granted = await requestDebuggerPermission();
+      if (!granted) {
+        tabMode = false;
+        showStorageWarning(
+          'Permissão para o modo aba não concedida. A reverificação continuará sem leitura em aba.',
+        );
+      }
+    } catch (err) {
+      tabMode = false;
+      showStorageWarning(
+        `Não foi possível ativar o modo aba; a reverificação continuará sem leitura `
+        + `em aba. Detalhe: ${(err && err.message) || err}`,
+      );
+    }
   }
   await runChecks(urls, { tabMode });
 });

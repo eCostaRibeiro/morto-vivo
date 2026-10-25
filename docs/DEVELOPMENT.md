@@ -43,6 +43,7 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS.
 - `lib/evidence.js`: enriquecimento de evidências, incluindo favicon.
 - `lib/history.js`: preferências e histórico no `chrome.storage.local`.
+- `lib/permissions.js`: consulta e solicitação da permissão opcional do modo aba.
 - `lib/exports.js`: geração de CSV, JSON e relatório HTML.
 - `lib/audioFeedback.js`: som curto para controles acionáveis.
 - `tests/`: regressões automatizadas em Node.js.

@@ -21,10 +21,10 @@
   },
   "permissions": [
     "storage",
-    "scripting",
-    "debugger"
+    "scripting"
   ],
   "optional_permissions": [
+    "debugger",
     "notifications"
   ],
   "host_permissions": [

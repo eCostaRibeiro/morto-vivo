@@ -76,7 +76,11 @@ Ative **Modo aba** quando páginas de plataformas compatíveis precisarem ser li
 navegador. A extensão abre uma aba em segundo plano e usa a sessão já autenticada do
 navegador. Para investigação, prefira um perfil de navegador dedicado. O modo aba não é
 usado para domínios desconhecidos nem para LinkedIn. O Facebook Marketplace tem um fluxo
-especial de leitura em aba.
+especial de leitura em aba. Ao ativar a opção, o navegador solicita a permissão de
+depuração, necessária para proteger as requisições da aba contra destinos privados. Se a
+permissão não for concedida, as verificações HTTP continuam disponíveis, mas sem leitura
+em aba. A reverificação pontual também pode solicitar essa permissão quando você escolher
+usar o modo aba.
 
 ### Notificação de conclusão
 
