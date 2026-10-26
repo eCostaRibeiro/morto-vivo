@@ -12,6 +12,11 @@ let savedRules = [];
 
 installButtonSoundFeedback();
 
+function hasUnsavedChanges() {
+  if (rules.length !== savedRules.length) return true;
+  return rules.some((rule, i) => rule.status !== savedRules[i]?.status || rule.term !== savedRules[i]?.term);
+}
+
 function setMessage(text, type = '') {
   const message = $('message');
   message.textContent = text;
@@ -110,6 +115,13 @@ $('rulesCsvFile').addEventListener('change', async (event) => {
     return;
   }
 
+  if (hasUnsavedChanges()) {
+    const confirmDiscard = window.confirm(
+      'Existem regras editadas não salvas no rascunho. Deseja substituí-las pelo conteúdo do arquivo CSV?'
+    );
+    if (!confirmDiscard) return;
+  }
+
   try {
     const parsed = parseCustomRulesCsv(await file.text());
     if (parsed.error) {
@@ -118,7 +130,7 @@ $('rulesCsvFile').addEventListener('change', async (event) => {
     }
     rules = parsed.rules;
     renderRules();
-    setMessage(`${rules.length} ${rules.length === 1 ? 'regra carregada' : 'regras carregadas'} no rascunho. Revise e salve para aplicar.`, 'success');
+    setMessage(`${rules.length} ${rules.length === 1 ? 'regra importada' : 'regras importadas'} do CSV para o rascunho. Revise e clique em “Salvar regras” para aplicar.`, 'success');
   } catch (error) {
     setMessage(`Não foi possível ler o arquivo CSV. Detalhe: ${(error && error.message) || error}`, 'error');
   }

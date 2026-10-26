@@ -20,9 +20,10 @@ perfil com sessão sensível que não seja apropriado para a atividade.
 ## Tráfego de rede
 
 Para verificar uma URL, a extensão faz requisições ao destino fornecido e pode consultar
-registros DNS via DNS-over-HTTPS do Cloudflare antes de conectar. Isso significa que o nome
-do host é enviado ao serviço DNS usado pela extensão, além das requisições feitas ao próprio
-site. Redirecionamentos são avaliados antes de seguir para o próximo destino.
+registros DNS via DNS-over-HTTPS (Cloudflare com fallback transparente para Google Public
+DNS) antes de conectar. Isso significa que o nome do host é enviado aos serviços DNS usados
+pela extensão, além das requisições feitas ao próprio site. Redirecionamentos são avaliados
+antes de seguir para o próximo destino.
 
 Em sites genéricos, uma falha de transporte ou timeout em HTTPS pode levar a uma única
 tentativa HTTP sem cookies. O fallback não é usado quando HTTPS responde, quando a validação

@@ -64,6 +64,25 @@ test('exports manual and automatic classifications separately', () => {
   assert.match(report, /Sem resposta \(timeout\)/);
 });
 
+test('does not export takedown as active when manual status contradicts the automatic result', () => {
+  const overridden = {
+    ...sample,
+    status: 'vivo',
+    reason: 'Classificação manual: Vivo',
+    automaticStatus: 'morto',
+    automaticReason: 'Site suspenso pelo provedor',
+    manualClassification: 'vivo',
+    tags: ['manual', 'takedown'],
+  };
+  const [header, row] = toCsv([overridden]).slice(1).split('\r\n');
+  const columns = header.split(';');
+  const values = row.split(';').map((value) => value.replace(/^"|"$/g, ''));
+  assert.equal(values[columns.indexOf('status')], 'vivo');
+  assert.equal(values[columns.indexOf('derrubado')], '');
+  assert.doesNotMatch(buildReport([overridden]), /DERRUBADO\/SUSPENSO/);
+  assert.match(buildReport([overridden]), /Classificação manual: vivo · automática: morto/);
+});
+
 test('exports parked-domain evidence separately from takedown', () => {
   const parked = { ...sample, tags: ['parked'] };
   const [header, row] = toCsv([parked]).slice(1).split('\r\n');

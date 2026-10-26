@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { applyManualClassification, clearManualClassification } from '../lib/manualClassification.js';
+import {
+  applyManualClassification,
+  clearManualClassification,
+  hasEffectiveTakedown,
+} from '../lib/manualClassification.js';
 
 test('applies one manual status to a selected batch without losing automatic evidence', () => {
   const results = [
@@ -42,4 +46,20 @@ test('rejects unsupported manual statuses', () => {
     () => applyManualClassification({ status: 'vivo', reason: 'ok' }, 'unknown'),
     /Status manual inválido/,
   );
+});
+
+test('only reports automatic takedown evidence when the manual status does not contradict it', () => {
+  const result = {
+    status: 'morto',
+    reason: 'Site suspenso',
+    tags: ['takedown'],
+  };
+
+  assert.equal(hasEffectiveTakedown(result), true);
+  applyManualClassification(result, 'vivo');
+  assert.equal(hasEffectiveTakedown(result), false);
+  applyManualClassification(result, 'morto');
+  assert.equal(hasEffectiveTakedown(result), true);
+  clearManualClassification(result);
+  assert.equal(hasEffectiveTakedown(result), true);
 });

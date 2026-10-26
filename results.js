@@ -37,6 +37,7 @@ const state = {
   settings: null,
   manualClassifications: {},
   collapsed: new Set(),
+  displayLimits: new Map(),
   open: new Set(),
   opened: new Set(),
   selected: new Set(),
@@ -535,6 +536,17 @@ $('btnRecheck').addEventListener('click', async () => {
 
 $('filtro').addEventListener('input', scheduleRender);
 $('filtroTipo').addEventListener('change', scheduleRender);
+
+const btnScrollTop = $('btnScrollTop');
+if (btnScrollTop) {
+  window.addEventListener('scroll', () => {
+    btnScrollTop.hidden = window.scrollY < 300;
+  }, { passive: true });
+  btnScrollTop.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('filtro')?.focus({ preventScroll: true });
+  });
+}
 
 /* ---------- início ---------- */
 

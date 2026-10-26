@@ -23,9 +23,10 @@ os testes:
 npm test
 ```
 
-Os testes cobrem classificação e análise, normalização, segurança de rede, leitura em aba,
-armazenamento, exportações e feedback sonoro. São testes locais; não validam a resposta ao
-vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivaldi.
+Os testes cobrem classificação e análise, sondas de plataformas, DNS, normalização,
+segurança de rede, leitura em aba, armazenamento, exportações e feedback sonoro. São testes
+locais; não validam a resposta ao vivo de plataformas de terceiros nem substituem um teste
+manual no Chrome/Vivaldi.
 
 ## Estrutura
 
@@ -34,15 +35,18 @@ vivo de plataformas de terceiros nem substituem um teste manual no Chrome/Vivald
   opções, estilos do popup e abertura do lote.
 - `rules.html` / `rules.js` / `rules.css`: edição, validação e importação/exportação CSV
   das regras personalizadas.
-- `results.html` / `results.js` / `results.css`: estrutura e estilos da tela de resultados;
-  `results.js` coordena fila, estado e exportações.
-- `lib/resultsView.js`: renderização dos resultados, filtros, seleção e ações da interface.
+- `results.html` / `results.js` / `results.css`: estrutura e estilos responsivos da tela de
+  resultados; `results.js` coordena fila, estado, exportações e retorno ao topo.
+- `lib/resultsView.js`: renderização dos resultados em blocos de até 50 por categoria,
+  filtros, seleção e ações da interface.
 - `background.js`: criação das notificações por solicitação da interface.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação das evidências coletadas.
-- `lib/rules.js`: identificação de plataformas e probes específicos.
+- `lib/rules.js`: identificação de plataformas e probes específicos (oEmbed de vídeos do
+  YouTube, X, TikTok, Bluesky, Discord e Shopee).
 - `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba.
-- `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS.
+- `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS via
+  DoH (Cloudflare com fallback transparente para Google Public DNS).
 - `lib/evidence.js`: enriquecimento de evidências, incluindo favicon.
 - `lib/history.js` / `lib/customRules.js`: preferências, histórico, validação das regras
   personalizadas e conversão CSV no `chrome.storage.local`.
@@ -111,7 +115,9 @@ escaping de campos e proteção contra fórmulas de planilha.
 - Classificações manuais são uma sobreposição local de apresentação por URL, mantida
   separada das evidências automáticas. Aplique a mesma regra às ações individuais e em
   lote; exports devem incluir os dois valores. Uma classificação manual como Morto não
-  pode adicionar a tag de takedown nem alterar o histórico automático.
+  pode adicionar a tag de takedown nem alterar o histórico automático. Se status manual e
+  automático divergirem, sinalize os dois no card e não exporte takedown como ativo para
+  evitar contradição com o status exibido.
 - Faça alterações de classificação acompanhadas de casos de regressão em `tests/`.
 - Propague erros de armazenamento e APIs do navegador para avisos explícitos; evite falhas
   silenciosas.

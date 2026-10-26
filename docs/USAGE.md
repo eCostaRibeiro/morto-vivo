@@ -86,7 +86,10 @@ resultados são exibidos; não muda a análise nem o status dos links.
 - **Indeterminado**: a evidência não permite concluir com segurança. Isso inclui desafios
   anti-bot, login obrigatório, timeouts e respostas ambíguas. Um aviso de reputação como
   “Suspected Phishing” também fica indeterminado: pode ser um bloqueio intersticial e não
-  comprova que o site foi removido ou derrubado. Respostas HTTP 200 com tipo de conteúdo
+  comprova que o site foi removido ou derrubado. Páginas de bloqueio identificadas como
+  provenientes de antivírus, como o Kaspersky, também ficam indeterminadas: o bloqueio pode
+  ocorrer no navegador ou na rede local e não comprova que o site esteja indisponível para
+  outros usuários. Respostas HTTP 200 com tipo de conteúdo
   não textual são exibidas como arquivo disponível para download; redirecionamentos para
   outro domínio ficam como vivos com confiança média e um aviso para confirmar o destino.
   Em sites genéricos, se HTTPS falhar por conexão, timeout ou redirecionamento não verificável,
@@ -113,6 +116,17 @@ uma indicação explícita de remoção é tratada separadamente.
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
 modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos
 permanecem indeterminados.
+
+### YouTube e Bluesky
+
+Para vídeos do YouTube, a extensão usa o oEmbed público como evidência de disponibilidade
+ou indisponibilidade do vídeo. A sonda não é usada para validar canais: uma resposta de
+erro do oEmbed não prova que um canal foi removido.
+
+Para perfis e publicações do Bluesky, a extensão consulta a API pública. Perfis e posts
+encontrados são classificados como vivos; respostas explícitas de inexistência/remoção
+podem ser classificadas como mortas. Restrições, bloqueios ou respostas inconclusivas não
+são tratados como prova de remoção.
 
 ## Opções
 
@@ -177,7 +191,9 @@ com as colunas `status` e `frase`, para backup ou transferência. O arquivo usa 
 BOM, separador `;` e cabeçalho `status;frase`. **Importar CSV** carrega um arquivo
 exportado anteriormente. A importação substitui o rascunho que está no editor, mas não
 altera as regras ativas até clicar em **Salvar regras**; um arquivo inválido é rejeitado
-sem modificar o rascunho. CSV é usado para regras; listas de URLs são importadas em TXT.
+sem modificar o rascunho. Se houver alterações ainda não salvas, a interface pede
+confirmação antes de substituí-las. CSV é usado para regras; listas de URLs são importadas
+em TXT.
 
 Uma regra personalizada é aplicada depois de CAPTCHA, códigos HTTP explícitos, sinais de
 remoção específicos da plataforma, soft-404 e páginas estacionadas; antes da classificação
@@ -207,18 +223,27 @@ essencial.
   marcadas como canceladas. Resultados cancelados não atualizam o histórico de status.
 - **Refazer**: executa novamente a verificação de um registro.
 - **Reverificar indeterminados**: cria um novo lote com os resultados indeterminados.
+- **Voltar ao topo**: depois de rolar a página, mostra um controle para retornar ao início
+  e focar o campo de filtro.
 - **Detalhes**: exibe sinais capturados, motivo, dados de fallback e tempos da análise.
 - **Mais → Classificação da lista**: move o card para Vivo, Zumbi, Morto ou Indeterminado,
   ou restaura a classificação automática. A escolha manual é salva localmente por URL e
   reaplicada em análises futuras; o card recebe o badge **CLASSIFICAÇÃO MANUAL** e os
-  detalhes/exportações preservam também o status e o motivo automáticos. Uma classificação
-  manual como Morto não cria, por si só, evidência de takedown.
+  detalhes/exportações preservam também o status e o motivo automáticos. Quando a nova
+  classificação automática divergir da manual, o card mostra os dois status. Nesse caso,
+  a indicação de takedown não é exportada como ativa junto do status manual; os detalhes
+  automáticos continuam disponíveis para comparação. Uma classificação manual como Morto
+  não cria, por si só, evidência de takedown.
 - Clique no cartão para copiar o endereço original; **Copiar URL** oferece a mesma ação em
   um botão acessível por teclado.
 - Clique no cabeçalho de uma categoria para expandir/recolher os resultados; o botão
   **Expandir/Recolher** oferece o mesmo controle por teclado.
 - Categorias sem resultados são ocultadas. Em categorias com links, o menu **Ações** reúne
   **Abrir todos** e **Copiar todos**; abrir muitos links solicita confirmação.
+- Para manter a página responsiva em listas grandes, cada categoria mostra até 50 cards por
+  vez. Use **Mostrar mais** para carregar o próximo bloco ou **Mostrar todos** para expandir
+  a categoria inteira. Os filtros continuam considerando todos os resultados, inclusive os
+  ainda não exibidos.
 - O título da categoria visível tem destaque maior para facilitar a leitura da seção atual.
 - Use a caixa **Selecionar** em cada card e **Abrir selecionados** para abrir apenas os
   registros escolhidos. **Limpar seleção** desmarca todos. A seleção é preservada enquanto

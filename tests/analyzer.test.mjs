@@ -172,6 +172,35 @@ test('does not treat a phishing reputation warning as proof of takedown', () => 
   assert.deepEqual(result.tags, []);
 });
 
+test('does not treat an antivirus block page as a site takedown', async () => {
+  const result = await checkUrl('https://coocresb.rodrigobarbosa.com.br/', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => new Response(
+      '<title>Kaspersky Premium</title><h1>Bloqueado por ordem/decisão</h1>',
+      { status: 499, headers: { 'content-type': 'text/html' } },
+    ),
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.httpStatus, 499);
+  assert.equal(result.confidence, 'baixa');
+  assert.ok(result.tags.includes('security-interstitial'));
+  assert.ok(!result.tags.includes('takedown'));
+  assert.match(result.reason, /software de segurança/i);
+});
+
+test('does not treat ordinary antivirus mentions as security block interstitials', () => {
+  const result = classifyPage({
+    url: 'https://example.com/security-guide',
+    status: 200,
+    html: '<title>Kaspersky Premium: review and setup guide</title><article>How to configure security protection.</article>',
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.ok(!result.tags.includes('security-interstitial'));
+});
+
 test('does not classify a large legitimate article as a phishing warning', () => {
   const article = `This article discusses phishing detection, warning messages, and deceptive sites. ${'More background and research context. '.repeat(700)}`;
   const result = classifyPage({

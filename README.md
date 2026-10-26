@@ -2,7 +2,13 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.48**, definida em `manifest.json`.
+extensão é **2.49**, definida em `manifest.json`.
+
+Esta versão acrescenta a verificação de perfis e publicações públicos do Bluesky e mantém
+a sonda oEmbed do YouTube restrita a vídeos, sem inferir que um canal foi removido a partir
+de um erro de oEmbed. O DNS-over-HTTPS usa Google Public DNS como alternativa quando o
+Cloudflare falha. A tela de resultados também mostra até 50 cards por categoria antes de
+oferecer carregamento progressivo, mantendo filtros e exportações aplicados ao lote todo.
 
 Esta versão torna mais conservadora a identificação de páginas de erro Cloudflare: menções
 em artigos ou páginas normais não são tratadas como falha, o bloqueio 1020 fica
@@ -18,7 +24,9 @@ de takedown, e registradores/marketplaces não são tratados como serviços de p
 
 Na página de resultados, cada card pode receber uma classificação manual persistida
 localmente, sem apagar o resultado automático nem seus motivos. Também é possível selecionar
-vários cards e aplicar a mesma classificação manual em lote.
+vários cards e aplicar a mesma classificação manual em lote. Divergências entre a decisão
+manual e a nova classificação automática ficam visíveis no card; as categorias exibem os
+resultados em blocos para manter a página responsiva em listas grandes.
 
 **Firefox ainda não é suportado.** A compatibilidade está em avaliação; veja o plano no
 [guia de desenvolvimento](docs/DEVELOPMENT.md).
