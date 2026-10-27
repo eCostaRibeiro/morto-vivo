@@ -5,6 +5,95 @@ import { checkUrl } from '../lib/analyzer.js';
 import { classifyPage } from '../lib/classification.js';
 import { detectPlatform } from '../lib/rules.js';
 
+test('detects Meta Ad Library links separately from Facebook profiles', () => {
+  const ad = detectPlatform(new URL('https://www.facebook.com/ads/library/?id=1840012267195550'));
+  const profile = detectPlatform(new URL('https://www.facebook.com/example.page'));
+
+  assert.equal(ad?.id, 'facebook');
+  assert.equal(ad?.name, 'Meta Ad Library');
+  assert.equal(ad?.kind, 'advertisement');
+  assert.equal(profile?.kind, 'social');
+});
+
+test('classifies a matching active Meta library ad as alive', () => {
+  const id = '1840012267195550';
+  const result = classifyPage({
+    url: `https://www.facebook.com/ads/library/?id=${id}`,
+    status: 200,
+    via: 'tab',
+    renderedText: `Active Library ID: ${id} Oct 20, 2026 Sponsored Example advertiser`,
+    platform: detectPlatform(new URL(`https://www.facebook.com/ads/library/?id=${id}`)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Anúncio ativo na Biblioteca de Anúncios da Meta');
+});
+
+test('classifies an inactive Meta library ad as a zombie', () => {
+  const id = '1840012267195550';
+  const result = classifyPage({
+    url: `https://www.facebook.com/ads/library/?id=${id}`,
+    status: 200,
+    via: 'tab',
+    renderedText: `Inactive Library ID: ${id} Oct 20, 2026 Sponsored Example advertiser`,
+    platform: detectPlatform(new URL(`https://www.facebook.com/ads/library/?id=${id}`)),
+  });
+
+  assert.equal(result.status, 'zumbi');
+  assert.equal(result.reason, 'Anúncio da Meta inativo ou não está sendo veiculado');
+});
+
+test('classifies an ad missing from Meta Ad Library as dead', () => {
+  const id = '1128685636301799';
+  const result = classifyPage({
+    url: `https://www.facebook.com/ads/library/?id=${id}`,
+    status: 200,
+    via: 'tab',
+    renderedText: `Ad isn't in the Ad Library. The most common reason is that the ad hasn't received any impressions yet.`,
+    platform: detectPlatform(new URL(`https://www.facebook.com/ads/library/?id=${id}`)),
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Anúncio não está disponível na Biblioteca de Anúncios da Meta');
+  assert.equal(result.confidence, 'média');
+});
+
+test('reads Meta Ad Library status from the rendered page after a blocked fetch', async () => {
+  const id = '1840012267195550';
+  let tabOptions;
+  const result = await checkUrl(`https://www.facebook.com/ads/library/?id=${id}`, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['157.240.1.35'] }),
+    fetchFn: async () => new Response('Forbidden', { status: 403 }),
+    readTab: async (url, options) => {
+      tabOptions = options;
+      return {
+        url,
+        html: '<title>Ad Library</title>',
+        text: `Active Library ID: ${id} Oct 20, 2026`,
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true },
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.via, 'tab');
+  assert.equal(tabOptions.settle, 8000);
+});
+
+test('does not use a different Meta ad card to classify the requested ad', () => {
+  const id = '1840012267195550';
+  const result = classifyPage({
+    url: `https://www.facebook.com/ads/library/?id=${id}`,
+    status: 200,
+    via: 'tab',
+    renderedText: 'Inactive Library ID: 1129430149522876 Sponsored Example advertiser',
+    platform: detectPlatform(new URL(`https://www.facebook.com/ads/library/?id=${id}`)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+});
+
 test('detects Bluesky platform for bsky.app URLs', () => {
   const p = detectPlatform(new URL('https://bsky.app/profile/alice.bsky.social'));
   assert.equal(p?.id, 'bluesky');

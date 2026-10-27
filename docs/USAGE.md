@@ -117,6 +117,15 @@ O Facebook pode retornar login, redirecionamentos ou respostas que não provam r
 modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos
 permanecem indeterminados.
 
+Links da Biblioteca de Anúncios da Meta (`facebook.com/ads/library/?id=...`) são
+reconhecidos como tipo **Anúncio** e classificados pelo status mostrado para o mesmo ID:
+**Ativo** fica Vivo e **Inativo**,
+pausado ou encerrado fica Zumbi. Se a Meta informar explicitamente que o anúncio não está
+na Biblioteca de Anúncios, o resultado fica Morto com confiança média. Isso indica que o
+anúncio não está disponível nessa biblioteca; não comprova que tenha sido removido, pois a
+própria Meta informa que anúncios sem impressões também podem não aparecer. Telas de login,
+bloqueios e resultados sem correspondência exata do ID permanecem Indeterminados.
+
 ### YouTube e Bluesky
 
 Para vídeos do YouTube, a extensão usa o oEmbed público como evidência de disponibilidade
