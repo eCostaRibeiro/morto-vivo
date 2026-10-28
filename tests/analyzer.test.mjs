@@ -357,17 +357,18 @@ test('classifies an HTTP 200 non-text response as an available download', async 
   assert.ok(result.tags.includes('download'));
 });
 
-test('marks cross-domain redirects as alive with medium confidence and an explicit tag', () => {
+test('keeps cross-domain redirects indeterminate with an explicit destination warning', () => {
   const result = classifyPage({
     url: 'https://old-example.com/item',
     finalUrl: 'https://destination.example.net/',
     status: 200,
     html: '<title>Destination</title><p>Available</p>',
   });
-  assert.equal(result.status, 'vivo');
+  assert.equal(result.status, 'indeterminado');
   assert.equal(result.confidence, 'média');
   assert.ok(result.tags.includes('redirect-externo'));
   assert.match(result.reason, /destination\.example\.net/);
+  assert.match(result.reason, /confirme o destino e o conteúdo/);
 });
 
 test('does not treat Facebook HTTP 404 as proof that content was removed', () => {

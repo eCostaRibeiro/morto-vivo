@@ -8,11 +8,17 @@ test('readInTab installs the debugger network guard and blocks private destinati
   const commands = [];
   const debuggerListeners = new Set();
   const updateListeners = new Set();
+  const createdListeners = new Set();
   let pageUrl = 'about:blank';
   let removed = false;
+  const removedTabIds = [];
 
   globalThis.chrome = {
     tabs: {
+      onCreated: {
+        addListener: (listener) => createdListeners.add(listener),
+        removeListener: (listener) => createdListeners.delete(listener),
+      },
       onUpdated: {
         addListener: (listener) => updateListeners.add(listener),
         removeListener: (listener) => updateListeners.delete(listener),
@@ -22,10 +28,14 @@ test('readInTab installs the debugger network guard and blocks private destinati
         pageUrl = update.url;
         for (const listener of updateListeners) listener(tabId, { status: 'loading' });
         for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        for (const listener of createdListeners) listener({ id: 19, openerTabId: tabId });
         return { id: tabId, url: pageUrl };
       },
       get: async (tabId) => ({ id: tabId, url: pageUrl }),
-      remove: async () => { removed = true; },
+      remove: async (tabId) => {
+        if (tabId === 17) removed = true;
+        removedTabIds.push(tabId);
+      },
     },
     debugger: {
       onEvent: {
@@ -68,6 +78,13 @@ test('readInTab installs the debugger network guard and blocks private destinati
       && params.errorReason === 'BlockedByClient'
     )));
     assert.ok(commands.some(({ method }) => method === 'Fetch.disable'));
+    assert.ok(commands.some(({ method, params }) => (
+      method === 'Page.setDownloadBehavior' && params.behavior === 'deny'
+    )));
+    assert.ok(commands.some(({ method, params }) => (
+      method === 'Page.setDownloadBehavior' && params.behavior === 'default'
+    )));
+    assert.ok(removedTabIds.includes(19));
     assert.equal(removed, true);
   } finally {
     if (originalChrome === undefined) delete globalThis.chrome;

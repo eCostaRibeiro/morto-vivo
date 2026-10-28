@@ -37,6 +37,9 @@ abrir também um site genérico cujo redirecionamento seja opaco ao `fetch`. A p
 sessão autenticada do navegador, se houver, e pode executar código. Um interceptor valida
 navegações principais e chamadas XHR/Fetch para bloquear destinos privados/reservados.
 Recursos estáticos como imagens, estilos e scripts não são interceptados individualmente.
+Downloads iniciados pela aba analisada são negados durante a leitura, e novas abas abertas
+por ela são fechadas. Esses controles são de melhor esforço e não substituem um perfil
+isolado do navegador.
 
 A verificação do TikTok é serializada e pausada para o restante do lote quando detecta HTTP
 429 ou um desafio explícito de verificação; um resultado indeterminado genérico não pausa a

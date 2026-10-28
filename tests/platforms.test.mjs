@@ -113,6 +113,35 @@ test('classifies a matching active Meta library ad as alive', () => {
   assert.equal(result.reason, 'Anúncio ativo na Biblioteca de Anúncios da Meta');
 });
 
+test('keeps Facebook unavailable content indeterminate instead of treating privacy as removal', () => {
+  const url = 'https://www.facebook.com/example.page';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'tab',
+    renderedText: 'This profile is not available right now.',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.reason, 'Facebook não disponibiliza o conteúdo publicamente; isso não confirma remoção');
+  assert.deepEqual(result.tags, ['content-unavailable']);
+});
+
+test('keeps restricted Facebook profile visibility indeterminate', () => {
+  const url = 'https://www.facebook.com/example.page';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'tab',
+    renderedText: 'Only people who are friends can see this profile.',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.deepEqual(result.tags, ['content-unavailable']);
+});
+
 test('classifies an inactive Meta library ad as a zombie', () => {
   const id = '1840012267195550';
   const result = classifyPage({

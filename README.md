@@ -2,7 +2,7 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.51**, definida em `manifest.json`.
+extensão é **2.52**, definida em `manifest.json`.
 
 Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
 quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata

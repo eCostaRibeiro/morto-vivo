@@ -141,7 +141,9 @@ cookies, IP nem identidade e não ativa navegação anônima.
 
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
 modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos
-permanecem indeterminados.
+permanecem indeterminados: conteúdo indisponível publicamente pode ser privado ou restrito,
+sem que isso confirme remoção. Redirecionamentos para outro domínio também ficam
+indeterminados até que o destino seja confirmado.
 
 ### Shopee
 
