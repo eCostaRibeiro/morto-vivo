@@ -111,11 +111,46 @@ resposta. Confirme manualmente resultados importantes antes de tomar decisões.
 O TikTok pode apresentar uma página de espera ou verificação anti-bot. Ela não é considerada
 prova de que um perfil esteja ativo ou removido. Para vídeos, o Morto-Vivo usa o estado
 público renderizado na página apenas quando o identificador corresponde ao vídeo da URL;
-uma indicação explícita de remoção é tratada separadamente.
+uma indicação explícita de remoção é tratada separadamente. Publicações de fotos/carrosséis
+também podem ser reconhecidas quando o estado público inclui imagens e o ID corresponde ao
+caminho da publicação. Links curtos `vm.tiktok.com`/`vt.tiktok.com` podem usar o oEmbed e,
+se redirecionarem, o destino canônico é usado para validar o estado capturado. Respostas de
+erro do oEmbed ou HTTP 404 sem evidência explícita de remoção não bastam para concluir que
+o conteúdo foi removido; o resultado permanece indeterminado quando não há outros sinais
+confiáveis.
+
+Em páginas de perfil lidas no navegador, mensagens explícitas de conta não encontrada (por
+exemplo, “Couldn't find this account” ou “Não foi possível localizar esta conta”) são
+classificadas como **Morto** com confiança média e tag `account-unavailable`. Isso indica
+que o perfil não está disponível naquele endereço, mas não confirma derrubada: o nome pode
+ter mudado, estar incorreto ou nunca ter existido. A regra não marca takedown e não se aplica
+a URLs de vídeos ou publicações.
+
+As verificações do TikTok são serializadas, com intervalo entre consultas. Se uma resposta
+indicar limite HTTP 429 ou um desafio explícito de verificação, o restante das URLs do TikTok
+no lote é marcado como indeterminado e não é consultado; sinais genéricos de classificação
+indeterminada não pausam a fila. URLs de outras plataformas continuam normalmente.
+Quando o **Modo aba** estiver ativo e a leitura em navegador for necessária, as páginas do
+TikTok usam uma aba em segundo plano reutilizada durante o lote; a
+extensão usa o fluxo de verificação mais conservador: faz a consulta inicial e, quando necessário,
+aguarda o carregamento da navegação em aba para ler o conteúdo renderizado. Perfis podem levar
+até 20 segundos adicionais para produzir evidências suficientes; o limite total de uma verificação
+TikTok também contempla o fetch inicial e o carregamento da aba. Isso reduz aberturas simultâneas, mas não contorna
+limites ou verificações da plataforma; a extensão não troca
+cookies, IP nem identidade e não ativa navegação anônima.
 
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
 modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos
 permanecem indeterminados.
+
+### Shopee
+
+Em páginas de produto da Shopee, a indicação explícita de estoque esgotado — como
+“Esgotado” ou “OUT OF STOCK” — é classificada como **Morto** com a tag `out-of-stock`.
+Quando o modo aba está ativo, a página renderizada também é verificada mesmo se a API
+encontrar o produto, para que um anúncio esgotado não seja marcado como vivo apenas por
+continuar cadastrado. Essa classificação indica indisponibilidade para compra, não remoção
+definitiva do anúncio.
 
 Links da Biblioteca de Anúncios da Meta (`facebook.com/ads/library/?id=...`) são
 reconhecidos como tipo **Anúncio** e classificados pelo status mostrado para o mesmo ID:

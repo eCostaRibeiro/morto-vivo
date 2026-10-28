@@ -14,6 +14,7 @@ import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
 import { consumeImportedBatch, ImportedBatchExpiredError } from './lib/importedBatch.js';
 import { norm } from './lib/text.js';
+import { createTikTokQueue, shouldPauseTikTokQueue } from './lib/tiktokQueue.js';
 import {
   applyManualClassification as applyManualClassificationOverride,
   clearManualClassification,
@@ -99,6 +100,7 @@ function withTimeout(promise, ms, label) {
 }
 // Incluem tempo para fetch, diagnóstico DoH/modo aba e uma margem de segurança.
 const CHECK_TIMEOUT_MS = 50000;
+const TIKTOK_CHECK_TIMEOUT_MS = 75000;
 const ENRICH_TIMEOUT_MS = 15000;
 
 function safeHost(url) {
@@ -194,10 +196,11 @@ async function checkUrlWithRetry(url, ctx, signal) {
     }).finally(unlink);
   };
   try {
-    return await runAttempt(CHECK_TIMEOUT_MS, `checkUrl ${url}`);
+    const timeoutMs = platform?.id === 'tiktok' ? TIKTOK_CHECK_TIMEOUT_MS : CHECK_TIMEOUT_MS;
+    return await runAttempt(timeoutMs, `checkUrl ${url}`);
   } catch (err) {
     const isTimeout = /^timeout/.test(String((err && err.message) || err));
-    if (!isTimeout || isFacebookMarketplace || (signal && signal.aborted)) throw err;
+    if (!isTimeout || isFacebookMarketplace || platform?.id === 'tiktok' || (signal && signal.aborted)) throw err;
     return await runAttempt(RETRY_TIMEOUT_MS, `checkUrl retry ${url}`);
   }
 }
@@ -257,12 +260,14 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   };
   // Limite global é complementado por limites por plataforma/host para não concentrar requisições num destino.
   const sems = new Map();
+  const tiktokQueue = createTikTokQueue();
   const semFor = (url) => {
     const u = new URL(url);
     const p = detectPlatform(u);
     const isFacebookMarketplace = p?.id === 'facebook' && p.kind === 'marketplace';
     const key = isFacebookMarketplace ? 'facebook-marketplace' : p ? p.id : u.hostname;
-    if (!sems.has(key)) sems.set(key, new Semaphore(isFacebookMarketplace ? 1 : p ? 2 : 3));
+    const limit = isFacebookMarketplace ? 1 : p ? 2 : 3;
+    if (!sems.has(key)) sems.set(key, new Semaphore(limit));
     return sems.get(key);
   };
 
@@ -271,8 +276,11 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     while (next < urls.length) {
       if (state.abort.signal.aborted) break; // não inicia novas URLs depois de "Cancelar análise"
       const url = urls[next++];
-      const sem = semFor(url);
-      await sem.acquire();
+      const platform = detectPlatform(new URL(url));
+      const isTikTok = platform?.id === 'tiktok';
+      const sem = isTikTok ? null : semFor(url);
+      const tiktokTurn = isTikTok ? await tiktokQueue.acquire(state.abort.signal) : null;
+      if (sem) await sem.acquire();
       state.active++;
       setProgress();
       try {
@@ -281,20 +289,51 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
         let analysisMs = 0;
         let enrichmentMs = 0;
         try {
-          const analysisStartedAt = performance.now();
-          try {
-            res = await checkUrlWithRetry(url, ctx, state.abort.signal);
-          } finally {
-            analysisMs = performance.now() - analysisStartedAt;
-          }
-          const enrichmentStartedAt = performance.now();
-          try {
-            await withTimeout(enrich(res, {
-              fetchFn: ctx.fetchFn,
-              doh: ctx.doh,
-            }), ENRICH_TIMEOUT_MS, `enrich ${url}`);
-          } finally {
-            enrichmentMs = performance.now() - enrichmentStartedAt;
+          if (isTikTok && !tiktokTurn.proceed) {
+            res = {
+              url,
+              host: safeHost(url),
+              platform: platform.id,
+              platformName: platform.name,
+              kind: platform.kind,
+              checkedAt: new Date().toISOString(),
+              via: 'fetch',
+              httpStatus: null,
+              finalUrl: '',
+              redirected: false,
+              title: '',
+              faviconUrl: '',
+              faviconData: '',
+              status: 'indeterminado',
+              reason: `Verificação do TikTok pausada neste lote: ${tiktokTurn.reason}. Tente novamente mais tarde.`,
+              confidence: 'baixa',
+              tags: ['anti-bot', 'queue-paused'],
+              sha256: '',
+              info: {},
+            };
+          } else {
+            const analysisStartedAt = performance.now();
+            try {
+              res = await checkUrlWithRetry(url, ctx, state.abort.signal);
+            } finally {
+              analysisMs = performance.now() - analysisStartedAt;
+            }
+            if (isTikTok && shouldPauseTikTokQueue(res)) {
+              tiktokQueue.pause(res.httpStatus === 429
+                ? 'foi recebida uma resposta HTTP 429 (limite de consultas)'
+                : 'foi detectada uma tela de verificação anti-bot');
+            }
+            if (!isTikTok || !shouldPauseTikTokQueue(res)) {
+              const enrichmentStartedAt = performance.now();
+              try {
+                await withTimeout(enrich(res, {
+                  fetchFn: ctx.fetchFn,
+                  doh: ctx.doh,
+                }), ENRICH_TIMEOUT_MS, `enrich ${url}`);
+              } finally {
+                enrichmentMs = performance.now() - enrichmentStartedAt;
+              }
+            }
           }
         } catch (err) {
           res = timeoutResult(url, err);
@@ -311,7 +350,8 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
         state.results.set(url, res);
       } finally {
         state.active--;
-        sem.release();
+        if (tiktokTurn) tiktokTurn.release();
+        else sem.release();
       }
       state.done++;
       setProgress();

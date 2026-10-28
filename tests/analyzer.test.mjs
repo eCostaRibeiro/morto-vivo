@@ -397,6 +397,56 @@ test('classifies a TikTok profile with a rendered profile heading as alive', () 
   assert.equal(result.reason, 'Perfil público encontrado');
 });
 
+test('classifies TikTok account-not-found interstitials as unavailable profiles, not takedowns', () => {
+  const url = 'https://www.tiktok.com/@www.picpay_bankingbrazil';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedText: "Couldn't find this account. Looking for videos? Try browsing our trending creators.",
+  });
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'TikTok informa que não encontrou esta conta; o perfil não está disponível neste endereço');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['account-unavailable']);
+});
+
+test('classifies a localized TikTok account-not-found message as unavailable', () => {
+  const url = 'https://www.tiktok.com/@simbrasil.oficial';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedText: 'Não foi possível localizar esta conta.',
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['account-unavailable']);
+});
+
+test('does not apply the TikTok profile-specific account-unavailable tag to video pages', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedText: "Couldn't find this account",
+  });
+  assert.equal(result.status, 'morto');
+  assert.doesNotMatch(result.tags.join(' '), /account-unavailable|takedown/);
+  assert.notEqual(result.reason, 'TikTok informa que não encontrou esta conta; o perfil não está disponível neste endereço');
+});
+
 test('keeps a TikTok profile challenge without a rendered profile heading indeterminate', () => {
   const url = 'https://www.tiktok.com/@j10002032';
   const result = classifyPage({
@@ -408,6 +458,52 @@ test('keeps a TikTok profile challenge without a rendered profile heading indete
     via: 'tab',
     renderedText: 'Please wait...',
   });
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.reason, 'TikTok apresentou uma tela de espera ou verificação anti-bot');
+  assert.deepEqual(result.tags, ['anti-bot']);
+});
+
+test('stops TikTok probing after an HTTP 429 response', async () => {
+  const calls = [];
+  const result = await checkUrl('https://www.tiktok.com/@creator/video/123456789', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['8.8.8.8'] }),
+    fetchFn: async (url) => {
+      calls.push(url);
+      return new Response('Too many requests', { status: 429 });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.httpStatus, 429);
+  assert.equal(result.via, 'api');
+  assert.ok(result.tags.includes('anti-bot'));
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /tiktok\.com\/oembed/);
+});
+
+test('keeps generic TikTok captcha pages indeterminate without using them as a batch-stop signal', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    status: 403,
+    html: '<title>Attention required</title><p>Request blocked for this browser.</p>',
+    platform: detectPlatform(new URL(url)),
+  });
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /Bloqueio anti-bot\/captcha/);
+  assert.ok(!result.tags.includes('anti-bot'));
+});
+
+test('marks explicit TikTok CAPTCHA text as a batch-stop challenge', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    status: 200,
+    html: '<title>TikTok</title><p>Captcha verification required.</p>',
+    platform: detectPlatform(new URL(url)),
+  });
+
   assert.equal(result.status, 'indeterminado');
   assert.equal(result.reason, 'TikTok apresentou uma tela de espera ou verificação anti-bot');
   assert.deepEqual(result.tags, ['anti-bot']);
@@ -471,6 +567,83 @@ test('classifies a TikTok video from matching public video state', () => {
   assert.equal(result.meta.og['og:title'], 'Angel: Vídeo público de teste');
 });
 
+test('classifies a TikTok photo post from matching public photo state', () => {
+  const url = 'https://www.tiktok.com/@angl.o5/photo/7673282406937333000';
+  const state = {
+    __DEFAULT_SCOPE__: {
+      'webapp.video-detail': {
+        statusCode: 0,
+        itemInfo: {
+          itemStruct: {
+            id: '7673282406937333000',
+            desc: 'Carrossel público de teste',
+            author: { uniqueId: 'angl.o5', nickname: 'Angel' },
+            imagePost: { images: [{ imageURL: { urlList: ['https://example.test/1.jpg'] } }] },
+          },
+        },
+      },
+    },
+  };
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: 200,
+    html: `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify(state)}</script>`,
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Publicação pública encontrada no TikTok');
+  assert.equal(result.meta.og['og:title'], 'Angel: Carrossel público de teste');
+});
+
+test('uses the canonical TikTok destination when classifying a redirected short link', () => {
+  const url = 'https://vm.tiktok.com/short-code/';
+  const finalUrl = 'https://www.tiktok.com/@angl.o5/video/7673282406937333000';
+  const state = {
+    __DEFAULT_SCOPE__: {
+      'webapp.video-detail': {
+        statusCode: 0,
+        itemInfo: {
+          itemStruct: {
+            id: '7673282406937333000',
+            desc: 'Vídeo alcançado por link curto',
+            author: { uniqueId: 'angl.o5' },
+          },
+        },
+      },
+    },
+  };
+  const result = classifyPage({
+    url,
+    finalUrl,
+    status: 200,
+    html: `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify(state)}</script>`,
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Vídeo público encontrado no TikTok');
+});
+
+test('classifies a TikTok photo post as removed from the explicit deleted state', () => {
+  const url = 'https://www.tiktok.com/@angl.o5/photo/7673282406937333000';
+  const state = {
+    __DEFAULT_SCOPE__: {
+      'webapp.video-detail': { statusCode: 10204, statusMsg: 'status_deleted' },
+    },
+  };
+  const result = classifyPage({
+    url,
+    status: 200,
+    html: `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify(state)}</script>`,
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Publicação removida segundo o estado público do TikTok');
+});
+
 test('uses TikTok server-rendered video state before requiring browser mode', async () => {
   const url = 'https://www.tiktok.com/@angl.o5/video/7673282406937333000';
   const state = {
@@ -491,7 +664,7 @@ test('uses TikTok server-rendered video state before requiring browser mode', as
   const result = await checkUrl(url, {
     doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
     fetchFn: async (requestUrl) => requestUrl.includes('/oembed?')
-      ? new Response(JSON.stringify({ type: 'video', embed_product_id: '7673282406937333000' }), {
+      ? new Response(JSON.stringify({ type: 'video', embed_product_id: '9999999999999999999' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
@@ -562,6 +735,19 @@ test('does not classify a TikTok video as alive when its state reports an error'
     platform: detectPlatform(new URL(url)),
   });
   assert.equal(result.status, 'indeterminado');
+});
+
+test('keeps an ambiguous TikTok HTTP 404 indeterminate without explicit deleted state', () => {
+  const url = 'https://www.tiktok.com/@angl.o5/video/7673282406937333000';
+  const result = classifyPage({
+    url,
+    status: 404,
+    html: '<title>TikTok</title><p>Not found</p>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /TikTok respondeu HTTP 404/);
 });
 
 test('classifies anti-bot responses as indeterminate', () => {
@@ -1029,6 +1215,59 @@ test('uses a rendered TikTok profile heading to classify and title the profile',
   assert.equal(result.info.tabHeading, 'J10002032');
   assert.equal(tabOptions.waitForTikTokProfile, true);
   assert.equal(tabOptions.tiktokWait, 20000);
+  assert.equal(tabOptions.reuseTab, true);
+});
+
+test('uses the slower reusable tab flow for TikTok video fallback', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  let tabOptions;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => ({ type: 'opaqueredirect', status: 0, headers: new Headers() }),
+    readTab: async (_url, options) => {
+      tabOptions = options;
+      return {
+        url,
+        html: '<title>TikTok</title>',
+        text: 'Video unavailable',
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+  assert.equal(result.via, 'tab');
+  assert.equal(tabOptions.waitForTikTokProfile, undefined);
+  assert.equal(tabOptions.settle, 8000);
+  assert.equal(tabOptions.reuseTab, true);
+});
+
+test('falls back to the reusable TikTok tab for an indeterminate profile fetch', async () => {
+  const url = 'https://www.tiktok.com/@creator';
+  let tabReads = 0;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => new Response('<title>TikTok</title><p>Temporary page shell</p>', {
+      status: 403,
+      headers: { 'content-type': 'text/html' },
+    }),
+    readTab: async (_url, options) => {
+      tabReads++;
+      assert.equal(options.reuseTab, true);
+      assert.equal(options.waitForTikTokProfile, true);
+      assert.equal(options.tiktokWait, 20000);
+      return {
+        url,
+        html: '<title>TikTok</title>',
+        text: "Couldn't find this account",
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(tabReads, 1);
+  assert.equal(result.via, 'tab');
+  assert.equal(result.status, 'morto');
 });
 
 test('uses the Facebook public profile description when no heading is available', async () => {

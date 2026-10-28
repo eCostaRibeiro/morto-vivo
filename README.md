@@ -2,13 +2,16 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.49**, definida em `manifest.json`.
+extensão é **2.51**, definida em `manifest.json`.
 
-Esta versão acrescenta a verificação de perfis e publicações públicos do Bluesky e mantém
-a sonda oEmbed do YouTube restrita a vídeos, sem inferir que um canal foi removido a partir
-de um erro de oEmbed. O DNS-over-HTTPS usa Google Public DNS como alternativa quando o
-Cloudflare falha. A tela de resultados também mostra até 50 cards por categoria antes de
-oferecer carregamento progressivo, mantendo filtros e exportações aplicados ao lote todo.
+Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
+quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
+respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
+ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
+evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
+fila é pausada após limites ou desafios explícitos. Anúncios da Shopee com indicação de
+estoque esgotado são classificados como mortos quando essa evidência aparece na página ou
+na API.
 
 Esta versão torna mais conservadora a identificação de páginas de erro Cloudflare: menções
 em artigos ou páginas normais não são tratadas como falha, o bloqueio 1020 fica

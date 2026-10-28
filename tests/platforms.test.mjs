@@ -15,6 +15,90 @@ test('detects Meta Ad Library links separately from Facebook profiles', () => {
   assert.equal(profile?.kind, 'social');
 });
 
+test('classifies a Shopee product as dead when the rendered page says it is out of stock', () => {
+  const url = 'https://shopee.com.br/Chip-para-Celular-Vivo-Pr%C3%A9-Sem-recarga-Tr%C3%AAs-tamanhos-i.389340473.22898749670';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    renderedText: 'Quantidade 1 Esgotado OUT OF STOCK',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Produto esgotado na Shopee');
+  assert.equal(result.confidence, 'alta');
+  assert.deepEqual(result.tags, ['out-of-stock']);
+});
+
+test('does not classify Shopee out-of-stock wording from fetch text or non-product pages as dead', () => {
+  const productUrl = 'https://shopee.com.br/product/389340473/22898749670';
+  const fetched = classifyPage({
+    url: productUrl,
+    status: 200,
+    via: 'fetch',
+    renderedText: 'Produto esgotado',
+    platform: detectPlatform(new URL(productUrl)),
+  });
+  const categoryUrl = 'https://shopee.com.br/search?keyword=esgotado';
+  const category = classifyPage({
+    url: categoryUrl,
+    status: null,
+    via: 'tab',
+    renderedText: 'Produto esgotado',
+    platform: detectPlatform(new URL(categoryUrl)),
+  });
+
+  assert.equal(fetched.status, 'indeterminado');
+  assert.equal(category.status, 'indeterminado');
+});
+
+test('reads Shopee out-of-stock status from the browser even when the API finds the product', async () => {
+  const url = 'https://shopee.com.br/Chip-para-Celular-Vivo-Pr%C3%A9-Sem-recarga-Tr%C3%AAs-tamanhos-i.389340473.22898749670';
+  let tabRead = false;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['23.197.0.1'] }),
+    fetchFn: async (requestUrl) => {
+      if (requestUrl.includes('/api/v4/item/get')) {
+        return new Response(JSON.stringify({
+          data: { itemid: 22898749670, shopid: 389340473, name: 'Chip Vivo', stock: 5 },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response('<title>Shopee</title><main>Carregue a página do produto</main>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+    readTab: async (tabUrl) => {
+      tabRead = true;
+      return { url: tabUrl, html: '<title>Shopee</title>', text: 'Quantidade 1 Esgotado OUT OF STOCK' };
+    },
+    opts: { tabMode: true },
+  });
+
+  assert.equal(tabRead, true);
+  assert.equal(result.status, 'morto');
+  assert.equal(result.via, 'tab');
+  assert.equal(result.reason, 'Produto esgotado na Shopee');
+  assert.deepEqual(result.tags, ['out-of-stock']);
+});
+
+test('classifies a Shopee API product with zero stock as dead', async () => {
+  const url = 'https://shopee.com.br/Chip-para-Celular-Vivo-Pr%C3%A9-Sem-recarga-Tr%C3%AAs-tamanhos-i.389340473.22898749670';
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['23.197.0.1'] }),
+    fetchFn: async () => new Response(JSON.stringify({
+      data: { itemid: 22898749670, shopid: 389340473, name: 'Chip Vivo', stock: 0 },
+    }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Produto esgotado na Shopee');
+  assert.equal(result.via, 'api');
+  assert.deepEqual(result.tags, ['out-of-stock']);
+});
+
 test('classifies a matching active Meta library ad as alive', () => {
   const id = '1840012267195550';
   const result = classifyPage({
@@ -99,6 +183,112 @@ test('detects Bluesky platform for bsky.app URLs', () => {
   assert.equal(p?.id, 'bluesky');
   assert.equal(p?.kind, 'social');
   assert.equal(p?.name, 'Bluesky');
+});
+
+test('validates TikTok videos through oEmbed only when the returned ID matches', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const calls = [];
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      calls.push(requestUrl);
+      if (requestUrl.includes('/oembed?')) {
+        return new Response(JSON.stringify({
+          type: 'video',
+          embed_product_id: '999999999',
+          title: 'Unrelated video',
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response('<title>TikTok</title><p>Page shell</p>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.via, 'fetch');
+  assert.equal(calls.length, 2);
+});
+
+test('accepts a TikTok video oEmbed response with the matching video ID', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      assert.match(requestUrl, /\/oembed\?/);
+      return new Response(JSON.stringify({
+        type: 'video',
+        embed_product_id: '123456789',
+        title: 'Public video',
+        author_name: 'Creator',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Vídeo disponível (oEmbed)');
+  assert.equal(result.via, 'api');
+  assert.equal(result.title, 'Public video');
+});
+
+test('does not treat a TikTok oEmbed 404 as conclusive removal', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  let pageFetched = false;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      if (requestUrl.includes('/oembed?')) return new Response('Not found', { status: 404 });
+      pageFetched = true;
+      return new Response('<title>TikTok</title><p>Not found</p>', {
+        status: 404,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(pageFetched, true);
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.httpStatus, 404);
+  assert.equal(result.via, 'fetch');
+});
+
+test('does not call TikTok video oEmbed for photo posts', async () => {
+  const url = 'https://www.tiktok.com/@creator/photo/123456789';
+  const state = {
+    __DEFAULT_SCOPE__: {
+      'webapp.video-detail': {
+        statusCode: 0,
+        itemInfo: {
+          itemStruct: {
+            id: '123456789',
+            desc: 'Carousel',
+            author: { uniqueId: 'creator' },
+            imagePost: { images: [{ imageURL: { urlList: ['https://example.test/1.jpg'] } }] },
+          },
+        },
+      },
+    },
+  };
+  let oembedCalled = false;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      if (requestUrl.includes('/oembed?')) oembedCalled = true;
+      return new Response(
+        `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify(state)}</script>`,
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(oembedCalled, false);
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Publicação pública encontrada no TikTok');
 });
 
 test('probes live Bluesky profile via public API', async () => {

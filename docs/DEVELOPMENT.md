@@ -43,7 +43,10 @@ manual no Chrome/Vivaldi.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação das evidências coletadas.
 - `lib/rules.js`: identificação de plataformas e probes específicos (oEmbed de vídeos do
-  YouTube, X, TikTok, Bluesky, Discord e Shopee).
+  YouTube/TikTok, X, Bluesky, Discord e Shopee). `lib/classification.js` também valida o
+  estado público de vídeos e publicações de fotos do TikTok pelo ID e pelo destino canônico.
+- `lib/tiktokQueue.js`: serializa as verificações do TikTok, aplica intervalo entre URLs e
+  pausa a fila da plataforma após HTTP 429 ou desafio explícito, sem interromper outros hosts.
 - `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba.
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS via
   DoH (Cloudflare com fallback transparente para Google Public DNS).

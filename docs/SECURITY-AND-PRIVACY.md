@@ -38,6 +38,12 @@ sessão autenticada do navegador, se houver, e pode executar código. Um interce
 navegações principais e chamadas XHR/Fetch para bloquear destinos privados/reservados.
 Recursos estáticos como imagens, estilos e scripts não são interceptados individualmente.
 
+A verificação do TikTok é serializada e pausada para o restante do lote quando detecta HTTP
+429 ou um desafio explícito de verificação; um resultado indeterminado genérico não pausa a
+fila. O modo aba reutiliza uma aba em segundo plano quando necessário;
+não usa navegação anônima nem tenta contornar controles, limites, cookies ou identidade da
+plataforma.
+
 A proteção é uma mitigação de melhor esforço, não uma garantia contra DNS rebinding: o
 navegador pode resolver o host novamente ao conectar. Não use a extensão como substituto
 de um proxy de saída ou de controles de rede corporativos.
