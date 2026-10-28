@@ -2,16 +2,26 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.52**, definida em `manifest.json`.
+extensão é **2.56**, definida em `manifest.json`.
 
 Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
 quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
 respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
 evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
-fila é pausada após limites ou desafios explícitos. Anúncios da Shopee com indicação de
+fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bios e legendas
+não pausam o lote. Anúncios da Shopee com indicação de
 estoque esgotado são classificados como mortos quando essa evidência aparece na página ou
-na API.
+na API. Redirecionamentos `meta refresh` só são seguidos quando o atraso é de até cinco
+segundos; destino com NXDOMAIN fica indeterminado e identifica o domínio de destino.
+
+### Decisões de classificação HTTP
+
+Em sites genéricos, uma resposta HTTP 403 continua classificada como **Zumbi**: o acesso
+está negado para a consulta, mas isso não comprova que o conteúdo foi removido. Uma resposta
+HTTP 404 continua **Morto** com alta confiança para a URL consultada; isso não significa que
+o domínio inteiro esteja fora do ar. Esses status genéricos não são tratados como prova de
+derrubada/takedown.
 
 Esta versão torna mais conservadora a identificação de páginas de erro Cloudflare: menções
 em artigos ou páginas normais não são tratadas como falha, o bloqueio 1020 fica

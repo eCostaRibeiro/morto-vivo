@@ -92,6 +92,74 @@ test('readInTab installs the debugger network guard and blocks private destinati
   }
 });
 
+test('readInTab continues when the browser does not support download behavior commands', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalWarn = console.warn;
+  const updateListeners = new Set();
+  const debuggerListeners = new Set();
+  const commands = [];
+  const warnings = [];
+  let pageUrl = 'about:blank';
+
+  console.warn = (...args) => warnings.push(args);
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 24 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async (_target, method) => {
+        commands.push(method);
+        if (method === 'Page.setDownloadBehavior') {
+          throw new Error('Cannot access browser-level commands');
+        }
+      },
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async () => [{
+        result: { url: pageUrl, html: '<title>loaded</title>', text: 'loaded', hasPassword: false },
+      }],
+    },
+  };
+
+  try {
+    const result = await readInTab('https://example.com/', {
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      settle: 0,
+      timeout: 100,
+      commandTimeout: 100,
+    });
+
+    assert.equal(result.url, 'https://example.com/');
+    assert.ok(commands.includes('Fetch.enable'), 'network guard should still be enabled');
+    assert.ok(commands.includes('Fetch.disable'), 'network guard should still be cleaned up');
+    assert.equal(commands.filter((method) => method === 'Page.setDownloadBehavior').length, 1);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0][0], /Bloqueio de downloads indisponível/);
+  } finally {
+    console.warn = originalWarn;
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
+  }
+});
+
 test('readInTab retries DOM capture when navigation removes the frame', async () => {
   const originalChrome = globalThis.chrome;
   const debuggerListeners = new Set();
@@ -358,6 +426,89 @@ test('readInTab waits for TikTok navigation to complete before reading the DOM',
   }
 });
 
+test('readInTab returns a TikTok anti-bot challenge without waiting for the profile timeout', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let watchdog;
+
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: {
+    body: { innerText: 'Security check. Please wait while we verify your browser.' },
+    documentElement: { outerHTML: '<html><body>Security check</body></html>' },
+    head: { outerHTML: '<title>TikTok</title>' },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  } });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true,
+    writable: true,
+    value: { href: 'https://www.tiktok.com/@creator', pathname: '/@creator' },
+  });
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 23 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        globalThis.location.href = update.url;
+        globalThis.location.pathname = new URL(update.url).pathname;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async ({ func, args }) => [{ result: await func(...args) }],
+    },
+  };
+
+  try {
+    const result = await Promise.race([
+      readInTab('https://www.tiktok.com/@creator', {
+        resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+        timeout: 1000,
+        commandTimeout: 100,
+        reuseTab: true,
+        waitForTikTokProfile: true,
+        tiktokWait: 20000,
+      }),
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error('TikTok challenge waited for the full profile timeout')), 500);
+      }),
+    ]);
+    assert.equal(result.text, 'Security check. Please wait while we verify your browser.');
+  } finally {
+    clearTimeout(watchdog);
+    try {
+      await closeReusableTab();
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+      if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+      else delete globalThis.document;
+      if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+      else delete globalThis.location;
+    }
+  }
+});
+
 test('readInTab opens a fresh guarded tab when the previous tab disappears', async () => {
   const originalChrome = globalThis.chrome;
   const debuggerListeners = new Set();
@@ -479,5 +630,109 @@ test('readInTab keeps the tab open until asynchronous DOM capture completes', as
   } finally {
     if (originalChrome === undefined) delete globalThis.chrome;
     else globalThis.chrome = originalChrome;
+  }
+});
+
+test('readInTab releases the tab semaphore after cancellation closes the guarded tab', async () => {
+  const originalChrome = globalThis.chrome;
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let nextTabId = 40;
+  let activeTabId = null;
+  let debuggerAttached = false;
+  const controller = new AbortController();
+  let firstNavigation = true;
+
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => {
+        activeTabId = ++nextTabId;
+        pageUrl = 'about:blank';
+        return { id: activeTabId };
+      },
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        if (firstNavigation) {
+          firstNavigation = false;
+          controller.abort();
+        }
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => {
+        if (tabId !== activeTabId) throw new Error('No tab with id: ' + tabId);
+        return { id: tabId, url: pageUrl };
+      },
+      remove: async (tabId) => {
+        if (tabId === activeTabId) {
+          activeTabId = null;
+          debuggerAttached = false;
+        }
+      },
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async ({ tabId }) => {
+        if (tabId !== activeTabId) throw new Error('No tab with id: ' + tabId);
+        debuggerAttached = true;
+      },
+      sendCommand: async ({ tabId }, method) => {
+        if (!debuggerAttached || tabId !== activeTabId) throw new Error('Debugger is not attached.');
+        if (method === 'Page.setDownloadBehavior' && tabId !== activeTabId) {
+          throw new Error('No tab with id: ' + tabId);
+        }
+      },
+      detach: async () => { debuggerAttached = false; },
+    },
+    scripting: {
+      executeScript: async () => {
+        return [{
+          result: { url: pageUrl, html: '<title>loaded</title>', text: 'loaded', hasPassword: false },
+        }];
+      },
+    },
+  };
+  try {
+    const cancelledRead = readInTab('https://instagram.com/first', {
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      settle: 0,
+      timeout: 1000,
+      commandTimeout: 100,
+      reuseTab: true,
+      signal: controller.signal,
+    });
+    await assert.rejects(cancelledRead, { name: 'AbortError' });
+
+    let watchdog;
+    const nextRead = await Promise.race([
+      readInTab('https://instagram.com/second', {
+        resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+        settle: 0,
+        timeout: 100,
+        commandTimeout: 100,
+        reuseTab: true,
+      }),
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error('Tab semaphore remained locked')), 500);
+      }),
+    ]);
+    clearTimeout(watchdog);
+    assert.equal(nextRead.url, 'https://instagram.com/second');
+  } finally {
+    try {
+      await closeReusableTab();
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+    }
   }
 });

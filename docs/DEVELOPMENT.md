@@ -71,8 +71,9 @@ manual no Chrome/Vivaldi.
    por plataforma/host.
 3. Cada URL passa pela coordenação em `lib/analyzer.js`; evidências adicionais como favicon
    são coletadas separadamente. Um redirecionamento JavaScript só é seguido quando o HTML
-   é um shell pequeno sem texto visível e o destino é um caminho da mesma origem; o destino
-   passa novamente pela validação de segurança da rede. Para sites genéricos, falhas de
+   é um shell pequeno sem texto visível e o destino é um caminho da mesma origem; um
+   redirecionamento por `meta refresh` HTTP(S) também é seguido. Todos os destinos passam
+   novamente pela validação de segurança da rede. Para sites genéricos, falhas de
    transporte ou timeout em HTTPS podem acionar uma única tentativa HTTP alternativa,
    também validada; o resultado fica identificado e a confiança é limitada a média, sem
    aumentar uma confiança baixa já existente. Respostas HTTPS

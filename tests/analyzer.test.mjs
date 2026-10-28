@@ -371,6 +371,91 @@ test('keeps cross-domain redirects indeterminate with an explicit destination wa
   assert.match(result.reason, /confirme o destino e o conteúdo/);
 });
 
+test('follows a validated cross-domain meta refresh and keeps its destination indeterminate', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://oldsite.com/landing', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requestedUrls.push(requestUrl);
+      if (requestUrl === 'https://oldsite.com/landing') {
+        return new Response(
+          '<html><head><meta http-equiv="refresh" content="0;url=https://brand.com/"></head><body></body></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        );
+      }
+      return new Response('<title>Brand</title><main>Official website</main>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+
+  assert.deepEqual(requestedUrls, ['https://oldsite.com/landing', 'https://brand.com/']);
+  assert.equal(result.finalUrl, 'https://brand.com/');
+  assert.equal(result.redirected, true);
+  assert.equal(result.status, 'indeterminado');
+  assert.ok(result.tags.includes('redirect-externo'));
+});
+
+test('does not follow a meta refresh whose delay exceeds five seconds', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://oldsite.com/dashboard', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requestedUrls.push(requestUrl);
+      return new Response(
+        '<html><head><title>Admin Dashboard</title><meta http-equiv="refresh" content="3600;url=/logout"></head><body><main>Active account dashboard and recent activity.</main></body></html>',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+  });
+
+  assert.deepEqual(requestedUrls, ['https://oldsite.com/dashboard']);
+  assert.equal(result.finalUrl, 'https://oldsite.com/dashboard');
+  assert.equal(result.status, 'vivo');
+});
+
+test('reports NXDOMAIN from a meta refresh as an indeterminate destination failure', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://oldsite.com/landing', {
+    doh: async (hostname) => hostname === 'oldsite.com'
+      ? { rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }
+      : { rcode: 3, nxdomain: true, hasAddress: false, addresses: [] },
+    fetchFn: async (requestUrl) => {
+      requestedUrls.push(requestUrl);
+      return new Response(
+        '<meta http-equiv="refresh" content="0;url=https://missing-phish-987654321.com/">',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+  });
+
+  assert.deepEqual(requestedUrls, ['https://oldsite.com/landing']);
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['redirect-externo', 'dns']);
+  assert.match(result.reason, /domínio inexistente \(missing-phish-987654321\.com\)/i);
+  assert.match(result.reason, /URL original respondeu/);
+});
+
+test('blocks a meta refresh to a private destination before requesting it', async () => {
+  const requestedUrls = [];
+  const result = await checkUrl('https://oldsite.com/landing', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async (requestUrl) => {
+      requestedUrls.push(requestUrl);
+      return new Response(
+        '<meta http-equiv="refresh" content="0;url=http://127.0.0.1/admin">',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+  });
+
+  assert.deepEqual(requestedUrls, ['https://oldsite.com/landing']);
+  assert.equal(result.status, 'indeterminado');
+  assert.deepEqual(result.tags, ['seguranca']);
+});
+
 test('does not treat Facebook HTTP 404 as proof that content was removed', () => {
   const url = 'https://www.facebook.com/profile.php?id=123';
   const result = classifyPage({
@@ -462,6 +547,41 @@ test('keeps a TikTok profile challenge without a rendered profile heading indete
   assert.equal(result.status, 'indeterminado');
   assert.equal(result.reason, 'TikTok apresentou uma tela de espera ou verificação anti-bot');
   assert.deepEqual(result.tags, ['anti-bot']);
+});
+
+test('does not classify challenge phrases in a rendered TikTok profile bio as anti-bot', () => {
+  const url = 'https://www.tiktok.com/@creator';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok - Make Your Day</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedHeading: 'Creator',
+    renderedText: 'Creator profile. Verify to continue and claim your prize. '.repeat(20),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.notEqual(result.reason, 'TikTok apresentou uma tela de espera ou verificação anti-bot');
+  assert.ok(!result.tags.includes('anti-bot'));
+});
+
+test('does not treat account-unavailable text in a TikTok profile bio as proof the account is missing', () => {
+  const url = 'https://www.tiktok.com/@creator';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok - Make Your Day</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedHeading: 'Creator',
+    renderedText: "Creator profile. Couldn't find this account? Verify to continue and claim your prize.",
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.ok(!result.tags.includes('account-unavailable'));
 });
 
 test('stops TikTok probing after an HTTP 429 response', async () => {
@@ -1271,6 +1391,63 @@ test('falls back to the reusable TikTok tab for an indeterminate profile fetch',
   assert.equal(result.status, 'morto');
 });
 
+test('opens TikTok profiles directly in tab mode without relying on the initial fetch', async () => {
+  const url = 'https://www.tiktok.com/@creator';
+  let tabReads = 0;
+  let fetchCalls = 0;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response(
+      "<title>TikTok</title><p>Couldn't find this account</p>",
+      { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    },
+    readTab: async (_url, options) => {
+      tabReads++;
+      assert.equal(options.reuseTab, true);
+      assert.equal(options.waitForTikTokProfile, true);
+      assert.equal(options.tiktokWait, 20000);
+      return {
+        url,
+        heading: 'Creator',
+        html: '<title>TikTok</title>',
+        text: 'Creator profile and public videos',
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(tabReads, 1);
+  assert.equal(fetchCalls, 0);
+  assert.equal(result.via, 'tab');
+  assert.equal(result.status, 'vivo');
+});
+
+test('does not fall back to fetch classification when TikTok tab verification fails', async () => {
+  const url = 'https://www.tiktok.com/@creator';
+  let fetchCalls = 0;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response("<title>TikTok</title>", {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+    readTab: async () => { throw new Error('Debugger unavailable'); },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(fetchCalls, 0);
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.reason, 'Falha ao confirmar o perfil TikTok no modo aba');
+  assert.equal(result.info.tabError, 'Debugger unavailable');
+});
+
 test('uses the Facebook public profile description when no heading is available', async () => {
   const url = 'https://facebook.com/TerraFibraPF';
   const result = await checkUrl(url, {
@@ -1381,6 +1558,23 @@ test('does not use tab mode when disabled or when network validation blocks the 
   });
   assert.equal(disabled.status, 'indeterminado');
   assert.equal(disabled.info.tabFallback, 'Não iniciada: modo aba desativado');
+  assert.equal(tabReads, 0);
+
+  const tikTokDisabled = await checkUrl('https://www.tiktok.com/@creator', {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => new Response('<title>TikTok</title>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    }),
+    readTab: async () => {
+      tabReads++;
+      return { url: 'https://www.tiktok.com/@creator', html: '', text: '' };
+    },
+    opts: { tabMode: false, timeoutMs: 50 },
+  });
+  assert.equal(tikTokDisabled.status, 'indeterminado');
+  assert.equal(tikTokDisabled.info.tabAttempted, false);
+  assert.equal(tikTokDisabled.info.tabFallback, 'Não iniciada: modo aba desativado');
   assert.equal(tabReads, 0);
 
   const blocked = await checkUrl('https://instagram.com/example_profile', {

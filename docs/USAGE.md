@@ -12,7 +12,8 @@ específicos de navegadores Chromium.
 3. Ative **Modo do desenvolvedor**.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
-   extensão após substituir os arquivos.
+   extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
+   **2.56** antes de testar as correções recentes do Modo aba.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -132,12 +133,16 @@ no lote é marcado como indeterminado e não é consultado; sinais genéricos de
 indeterminada não pausam a fila. URLs de outras plataformas continuam normalmente.
 Quando o **Modo aba** estiver ativo e a leitura em navegador for necessária, as páginas do
 TikTok usam uma aba em segundo plano reutilizada durante o lote; a
-extensão usa o fluxo de verificação mais conservador: faz a consulta inicial e, quando necessário,
-aguarda o carregamento da navegação em aba para ler o conteúdo renderizado. Perfis podem levar
-até 20 segundos adicionais para produzir evidências suficientes; o limite total de uma verificação
-TikTok também contempla o fetch inicial e o carregamento da aba. Isso reduz aberturas simultâneas, mas não contorna
+extensão usa o fluxo de verificação mais conservador. Perfis TikTok são abertos diretamente
+no navegador, sem classificação preliminar por fetch, e podem levar até 20 segundos para
+produzir evidências suficientes. Se a leitura da aba falhar, o resultado fica indeterminado.
+Vídeos e outras URLs seguem consultando o fetch/oEmbed antes de usar a aba quando necessário.
+Isso reduz aberturas simultâneas, mas não contorna
 limites ou verificações da plataforma; a extensão não troca
 cookies, IP nem identidade e não ativa navegação anônima.
+Se uma URL receber HTTP 429 ou HTTP 403 com desafio explícito, o lote para de consultar
+os demais perfis TikTok: eles aparecem como não consultados, e não como falha ao abrir a aba.
+Frases de verificação em bios ou legendas de perfis não pausam a fila.
 
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
 modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos

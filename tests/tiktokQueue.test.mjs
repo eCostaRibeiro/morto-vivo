@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { classifyPage } from '../lib/classification.js';
+import { detectPlatform } from '../lib/rules.js';
 import { createTikTokQueue, shouldPauseTikTokQueue } from '../lib/tiktokQueue.js';
 
 test('only pauses the TikTok queue for explicit rate limits or TikTok challenges', () => {
@@ -19,7 +21,41 @@ test('only pauses the TikTok queue for explicit rate limits or TikTok challenges
     platform: 'tiktok',
     reason: 'TikTok apresentou uma tela de espera ou verificação anti-bot',
     tags: ['anti-bot'],
+  }), false);
+  assert.equal(shouldPauseTikTokQueue({
+    platform: 'tiktok',
+    httpStatus: 403,
+    reason: 'TikTok limitou ou desafiou a consulta (HTTP 403); a fila da plataforma será pausada',
+    tags: ['anti-bot'],
   }), true);
+  assert.equal(shouldPauseTikTokQueue({
+    platform: 'facebook',
+    httpStatus: 429,
+  }), false);
+});
+
+test('a verification phrase in a profile bio does not pause the following TikTok check', async () => {
+  const url = 'https://www.tiktok.com/@creator';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok - Make Your Day</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedHeading: 'Creator',
+    renderedText: 'Creator profile. Verify to continue and claim your prize. '.repeat(20),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(shouldPauseTikTokQueue({ ...result, platform: 'tiktok' }), false);
+
+  const queue = createTikTokQueue(0);
+  const first = await queue.acquire();
+  first.release();
+  const next = await queue.acquire();
+  assert.equal(next.proceed, true);
+  next.release();
 });
 
 test('serializes TikTok work and pauses queued checks after a challenge', async () => {

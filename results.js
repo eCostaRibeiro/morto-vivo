@@ -272,6 +272,8 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   };
 
   let next = 0;
+  let tiktokQueuePauseReason = '';
+  let tiktokPausedCount = 0;
   const worker = async () => {
     while (next < urls.length) {
       if (state.abort.signal.aborted) break; // não inicia novas URLs depois de "Cancelar análise"
@@ -290,6 +292,7 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
         let enrichmentMs = 0;
         try {
           if (isTikTok && !tiktokTurn.proceed) {
+            tiktokPausedCount++;
             res = {
               url,
               host: safeHost(url),
@@ -309,7 +312,10 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
               confidence: 'baixa',
               tags: ['anti-bot', 'queue-paused'],
               sha256: '',
-              info: {},
+              info: {
+                tabAttempted: false,
+                tabFallback: 'Não iniciada: fila TikTok pausada após limite ou desafio anti-bot',
+              },
             };
           } else {
             const analysisStartedAt = performance.now();
@@ -319,9 +325,10 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
               analysisMs = performance.now() - analysisStartedAt;
             }
             if (isTikTok && shouldPauseTikTokQueue(res)) {
-              tiktokQueue.pause(res.httpStatus === 429
+              tiktokQueuePauseReason = res.httpStatus === 429
                 ? 'foi recebida uma resposta HTTP 429 (limite de consultas)'
-                : 'foi detectada uma tela de verificação anti-bot');
+                : 'foi detectada uma tela de verificação anti-bot';
+              tiktokQueue.pause(tiktokQueuePauseReason);
             }
             if (!isTikTok || !shouldPauseTikTokQueue(res)) {
               const enrichmentStartedAt = performance.now();
@@ -382,8 +389,11 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
       urls.map((url) => state.results.get(url))
         .filter((result) => result?.status === cat.status).length,
     ]));
-    const message = `Monitoramento concluído: ${urls.length} links — ${counts.vivo} vivos, `
+    let message = `Monitoramento concluído: ${urls.length} links — ${counts.vivo} vivos, `
       + `${counts.zumbi} zumbis, ${counts.morto} mortos e ${counts.indeterminado} indeterminados.`;
+    if (tiktokPausedCount) {
+      message += ` TikTok pausado: ${tiktokPausedCount} perfil(is) não consultado(s) após ${tiktokQueuePauseReason}.`;
+    }
     toast(message, 6500);
     notifyCompletion(message);
   }
