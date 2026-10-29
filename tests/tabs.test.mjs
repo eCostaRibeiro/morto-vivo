@@ -487,13 +487,185 @@ test('readInTab returns a TikTok anti-bot challenge without waiting for the prof
         commandTimeout: 100,
         reuseTab: true,
         waitForTikTokProfile: true,
-        tiktokWait: 20000,
+        tiktokWait: 45000,
       }),
       new Promise((_, reject) => {
         watchdog = setTimeout(() => reject(new Error('TikTok challenge waited for the full profile timeout')), 500);
       }),
     ]);
     assert.equal(result.text, 'Security check. Please wait while we verify your browser.');
+  } finally {
+    clearTimeout(watchdog);
+    try {
+      await closeReusableTab();
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+      if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+      else delete globalThis.document;
+      if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+      else delete globalThis.location;
+    }
+  }
+});
+
+test('readInTab returns a TikTok unavailable-profile message with surrounding page text without waiting', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let watchdog;
+
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: {
+    body: { innerText: `Não foi possível localizar esta conta. ${'TikTok navigation and footer content. '.repeat(30)}` },
+    documentElement: { outerHTML: '<html><body>Account unavailable</body></html>' },
+    head: { outerHTML: '<title>TikTok</title>' },
+    querySelector: () => null,
+    querySelectorAll: () => [{
+      innerText: 'Para você',
+      getClientRects: () => [{}],
+    }],
+  } });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true,
+    writable: true,
+    value: { href: 'https://www.tiktok.com/@missing_profile', pathname: '/@missing_profile' },
+  });
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 24 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        globalThis.location.href = update.url;
+        globalThis.location.pathname = new URL(update.url).pathname;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async ({ func, args }) => [{ result: await func(...args) }],
+    },
+  };
+
+  try {
+    const result = await Promise.race([
+      readInTab('https://www.tiktok.com/@missing_profile', {
+        resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+        timeout: 1000,
+        commandTimeout: 100,
+        reuseTab: true,
+        waitForTikTokProfile: true,
+        tiktokWait: 45000,
+      }),
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error('Unavailable TikTok profile waited for the full evidence timeout')), 500);
+      }),
+    ]);
+
+    assert.match(result.text, /Não foi possível localizar esta conta/);
+  } finally {
+    clearTimeout(watchdog);
+    try {
+      await closeReusableTab();
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+      if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+      else delete globalThis.document;
+      if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+      else delete globalThis.location;
+    }
+  }
+});
+
+test('readInTab finds an unavailable TikTok profile after long navigation text without waiting', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let watchdog;
+  const renderedText = `${'TikTok navigation and recommendations. '.repeat(60)}Couldn't find this account.`;
+
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: {
+    body: { innerText: renderedText },
+    documentElement: { outerHTML: '<html><body>Account unavailable</body></html>' },
+    head: { outerHTML: '<title>TikTok</title>' },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  } });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true,
+    writable: true,
+    value: { href: 'https://www.tiktok.com/@missing_profile', pathname: '/@missing_profile' },
+  });
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 25 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        globalThis.location.href = update.url;
+        globalThis.location.pathname = new URL(update.url).pathname;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async ({ func, args }) => [{ result: await func(...args) }],
+    },
+  };
+
+  try {
+    const result = await Promise.race([
+      readInTab('https://www.tiktok.com/@missing_profile', {
+        resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+        timeout: 1000,
+        commandTimeout: 100,
+        reuseTab: true,
+        waitForTikTokProfile: true,
+        tiktokWait: 45000,
+      }),
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error('Unavailable TikTok profile waited for the full evidence timeout')), 500);
+      }),
+    ]);
+
+    assert.match(result.text, /Couldn't find this account/);
   } finally {
     clearTimeout(watchdog);
     try {

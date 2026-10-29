@@ -45,7 +45,12 @@ A verificação do TikTok é serializada e pausada para o restante do lote quand
 429 ou um desafio explícito de verificação; um resultado indeterminado genérico não pausa a
 fila. O modo aba reutiliza uma aba em segundo plano quando necessário;
 não usa navegação anônima nem tenta contornar controles, limites, cookies ou identidade da
-plataforma.
+plataforma. Para perfis, a captura aguarda evidências renderizadas por até 45 segundos,
+retornando antes ao encontrar um cabeçalho de perfil, desafio ou a mensagem de conta não
+encontrada. Esse prazo se aplica à leitura do DOM, não altera o timeout global da análise.
+Como o navegador usa a sessão existente, uma página Meta/Facebook aberta em modo aba pode
+usar cookies já presentes e produzir efeitos visíveis à conta autenticada. Prefira um perfil
+dedicado e considere as regras de privacidade da plataforma.
 
 A proteção é uma mitigação de melhor esforço, não uma garantia contra DNS rebinding: o
 navegador pode resolver o host novamente ao conectar. Não use a extensão como substituto

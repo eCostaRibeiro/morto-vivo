@@ -517,6 +517,57 @@ test('classifies a localized TikTok account-not-found message as unavailable', (
   assert.deepEqual(result.tags, ['account-unavailable']);
 });
 
+test('classifies the localized TikTok account-not-found heading as unavailable', () => {
+  const url = 'https://www.tiktok.com/@missing_profile';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedHeading: 'Não foi possível localizar esta conta',
+    renderedText: 'Procurando vídeos? Experimente navegar por nossos criadores, hashtags e sons populares.',
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['account-unavailable']);
+});
+
+test('classifies a TikTok account-not-found message with surrounding page text as unavailable', () => {
+  const url = 'https://www.tiktok.com/@missing_profile';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedText: `Couldn't find this account. ${'TikTok navigation and footer content. '.repeat(30)}`,
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.deepEqual(result.tags, ['account-unavailable']);
+});
+
+test('finds a TikTok account-not-found message after long navigation text', () => {
+  const url = 'https://www.tiktok.com/@missing_profile';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '<title>TikTok</title>',
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+    renderedHeading: 'Para você',
+    renderedText: `${'TikTok navigation and recommendations. '.repeat(60)}Couldn't find this account.`,
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.deepEqual(result.tags, ['account-unavailable']);
+});
+
 test('does not apply the TikTok profile-specific account-unavailable tag to video pages', () => {
   const url = 'https://www.tiktok.com/@creator/video/123456789';
   const result = classifyPage({
@@ -1335,7 +1386,7 @@ test('uses a rendered TikTok profile heading to classify and title the profile',
   assert.equal(result.title, 'J10002032');
   assert.equal(result.info.tabHeading, 'J10002032');
   assert.equal(tabOptions.waitForTikTokProfile, true);
-  assert.equal(tabOptions.tiktokWait, 20000);
+  assert.equal(tabOptions.tiktokWait, 45000);
   assert.equal(tabOptions.reuseTab, true);
 });
 
@@ -1375,7 +1426,7 @@ test('falls back to the reusable TikTok tab for an indeterminate profile fetch',
       tabReads++;
       assert.equal(options.reuseTab, true);
       assert.equal(options.waitForTikTokProfile, true);
-      assert.equal(options.tiktokWait, 20000);
+      assert.equal(options.tiktokWait, 45000);
       return {
         url,
         html: '<title>TikTok</title>',
@@ -1408,7 +1459,7 @@ test('opens TikTok profiles directly in tab mode without relying on the initial 
       tabReads++;
       assert.equal(options.reuseTab, true);
       assert.equal(options.waitForTikTokProfile, true);
-      assert.equal(options.tiktokWait, 20000);
+      assert.equal(options.tiktokWait, 45000);
       return {
         url,
         heading: 'Creator',

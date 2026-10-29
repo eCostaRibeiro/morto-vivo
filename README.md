@@ -10,10 +10,17 @@ respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos 
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
 evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
 fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bios e legendas
-não pausam o lote. Anúncios da Shopee com indicação de
+não pausam o lote. No modo aba, perfis TikTok podem aguardar até 45 segundos pela evidência
+renderizada; a leitura retorna antes ao encontrar um cabeçalho de perfil, uma tela de desafio
+ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
+localizar esta conta” é interpretado como indisponibilidade do perfil, inclusive quando
+aparece no cabeçalho ou depois da navegação da página. Anúncios da Shopee com indicação de
 estoque esgotado são classificados como mortos quando essa evidência aparece na página ou
 na API. Redirecionamentos `meta refresh` só são seguidos quando o atraso é de até cinco
 segundos; destino com NXDOMAIN fica indeterminado e identifica o domínio de destino.
+Links da Biblioteca de Anúncios da Meta também são identificados por ID, distinguindo anúncio
+ativo, pausado/inativo e indisponível na biblioteca sem tratar toda indisponibilidade como
+takedown.
 
 ### Decisões de classificação HTTP
 
@@ -75,3 +82,4 @@ O comando executa a verificação de sintaxe e a suíte automática com `node --
 - [Guia de uso](docs/USAGE.md): instalação, opções, resultados, notificações e solução de problemas.
 - [Guia de desenvolvimento](docs/DEVELOPMENT.md): arquitetura, testes e convenções para mudanças.
 - [Segurança e privacidade](docs/SECURITY-AND-PRIVACY.md): permissões, tráfego de rede, armazenamento e limites.
+- [Apresentação técnica](docs/PRESENTATION.md): deck em Markdown/Marp com recursos, arquitetura e limites da extensão.

@@ -92,7 +92,8 @@ resultados são exibidos; não muda a análise nem o status dos links.
   ocorrer no navegador ou na rede local e não comprova que o site esteja indisponível para
   outros usuários. Respostas HTTP 200 com tipo de conteúdo
   não textual são exibidas como arquivo disponível para download; redirecionamentos para
-  outro domínio ficam como vivos com confiança média e um aviso para confirmar o destino.
+  outro domínio ficam como indeterminados, com aviso para confirmar o destino e confiança
+  média.
   Em sites genéricos, se HTTPS falhar por conexão, timeout ou redirecionamento não verificável,
   a extensão pode tentar HTTP uma vez; o resultado sinaliza o uso de HTTP e fica com confiança
   limitada a média, sem aumentar uma confiança baixa já existente. Um resultado HTTP não
@@ -134,8 +135,15 @@ indeterminada não pausam a fila. URLs de outras plataformas continuam normalmen
 Quando o **Modo aba** estiver ativo e a leitura em navegador for necessária, as páginas do
 TikTok usam uma aba em segundo plano reutilizada durante o lote; a
 extensão usa o fluxo de verificação mais conservador. Perfis TikTok são abertos diretamente
-no navegador, sem classificação preliminar por fetch, e podem levar até 20 segundos para
-produzir evidências suficientes. Se a leitura da aba falhar, o resultado fica indeterminado.
+no navegador, sem classificação preliminar por fetch, e aguardam evidências renderizadas por
+até 45 segundos. A leitura retorna antes ao encontrar um cabeçalho de perfil, desafio explícito
+ou mensagem de conta não encontrada, mesmo quando a página inclui navegação/rodapé. O texto
+“Não foi possível localizar esta conta” é tratado como evidência mesmo se estiver no cabeçalho
+principal; cabeçalhos de navegação como “Para você” não são interpretados como nome de perfil.
+Quando existe um cabeçalho real de perfil, frases iguais dentro da bio não são usadas para
+declarar a conta indisponível. O limite de 45 segundos é da espera pelo DOM/evidências, não
+altera o timeout global da análise. Se o prazo terminar sem evidência suficiente, o resultado
+fica indeterminado. Se a leitura da aba falhar, o resultado também fica indeterminado.
 Vídeos e outras URLs seguem consultando o fetch/oEmbed antes de usar a aba quando necessário.
 Isso reduz aberturas simultâneas, mas não contorna
 limites ou verificações da plataforma; a extensão não troca

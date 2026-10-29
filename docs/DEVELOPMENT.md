@@ -41,13 +41,16 @@ manual no Chrome/Vivaldi.
   filtros, seleção e ações da interface.
 - `background.js`: criação das notificações por solicitação da interface.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
-- `lib/classification.js`: classificação das evidências coletadas.
+- `lib/classification.js`: classificação pura das evidências coletadas, incluindo regras
+  contextuais para Facebook/Meta e estados públicos de perfis/conteúdos TikTok.
 - `lib/rules.js`: identificação de plataformas e probes específicos (oEmbed de vídeos do
   YouTube/TikTok, X, Bluesky, Discord e Shopee). `lib/classification.js` também valida o
   estado público de vídeos e publicações de fotos do TikTok pelo ID e pelo destino canônico.
 - `lib/tiktokQueue.js`: serializa as verificações do TikTok, aplica intervalo entre URLs e
   pausa a fila da plataforma após HTTP 429 ou desafio explícito, sem interromper outros hosts.
-- `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba.
+- `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba. Perfis
+  TikTok aguardam o DOM por até 45 segundos, mas retornam antes ao reconhecer cabeçalho de
+  perfil, desafio ou mensagem explícita de conta não encontrada.
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS via
   DoH (Cloudflare com fallback transparente para Google Public DNS).
 - `lib/evidence.js`: enriquecimento de evidências, incluindo favicon.
@@ -69,8 +72,12 @@ manual no Chrome/Vivaldi.
    a página de resultados por até 24 horas.
 2. A página de resultados executa até seis verificações concorrentes, com limites adicionais
    por plataforma/host.
-3. Cada URL passa pela coordenação em `lib/analyzer.js`; evidências adicionais como favicon
-   são coletadas separadamente. Um redirecionamento JavaScript só é seguido quando o HTML
+3. Cada URL passa pela coordenação em `lib/analyzer.js`; perfis TikTok com Modo aba ativo
+   seguem diretamente para a aba reutilizada. A prontidão reconhece cabeçalhos genéricos de
+   navegação em português e mensagens de conta não encontrada no DOM, inclusive quando há
+   texto adicional ao redor. O classificador não deve confundir o texto de bio com esse aviso
+   quando existe um cabeçalho real de perfil. Evidências adicionais como favicon são
+   coletadas separadamente. Um redirecionamento JavaScript só é seguido quando o HTML
    é um shell pequeno sem texto visível e o destino é um caminho da mesma origem; um
    redirecionamento por `meta refresh` HTTP(S) também é seguido. Todos os destinos passam
    novamente pela validação de segurança da rede. Para sites genéricos, falhas de
@@ -116,6 +123,13 @@ escaping de campos e proteção contra fórmulas de planilha.
   As regras não devem sobrepor CAPTCHA, barreira de login correspondente, status HTTP
   explícito nem evidência definitiva da plataforma. São avaliadas após sinais de remoção,
   soft-404 e páginas estacionadas, antes do fallback genérico de plataforma.
+- Preserve os casos Meta separados por tipo de recurso: conteúdo de perfil do Facebook
+  indisponível/restrito não prova remoção; a Biblioteca de Anúncios só é classificada quando
+  o estado corresponde ao ID consultado (ativo = Vivo, inativo/pausado/encerrado = Zumbi,
+  aviso explícito de ausência na biblioteca = Morto com confiança média). Para TikTok,
+  mantenha testes da frase “Não foi possível localizar esta conta” tanto no cabeçalho quanto
+  no corpo, junto de cabeçalho genérico de navegação e texto de bio como controles contra
+  falso positivo.
 - Classificações manuais são uma sobreposição local de apresentação por URL, mantida
   separada das evidências automáticas. Aplique a mesma regra às ações individuais e em
   lote; exports devem incluir os dois valores. Uma classificação manual como Morto não
