@@ -1,10 +1,9 @@
 // Orquestra a análise em lote, o estado da página e as exportações.
-import { checkUrl } from './lib/analyzer.js';
+// A concorrência/retry/fila do TikTok em si vivem em lib/batchRunner.js (testável sem DOM);
+// este arquivo só amarra esse motor ao estado da página e aos elementos da UI.
 import { makeDoh } from './lib/dns.js';
-import { detectPlatform } from './lib/rules.js';
 import { defang } from './lib/normalize.js';
 import { closeReusableTab, readInTab } from './lib/tabs.js';
-import { enrich } from './lib/evidence.js';
 import {
   loadHistory, applyHistory, saveHistory, loadManualClassifications, saveManualClassifications,
   loadSettings, DEFAULT_SETTINGS,
@@ -14,11 +13,12 @@ import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
 import { consumeImportedBatch, ImportedBatchExpiredError } from './lib/importedBatch.js';
 import { norm } from './lib/text.js';
-import { createTikTokQueue, shouldPauseTikTokQueue } from './lib/tiktokQueue.js';
 import {
   applyManualClassification as applyManualClassificationOverride,
   clearManualClassification,
 } from './lib/manualClassification.js';
+import { FETCH_PAGE_TIMEOUT_MS } from './lib/config.js';
+import { runBatch } from './lib/batchRunner.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
@@ -68,48 +68,9 @@ function parseUrlsParam() {
 }
 
 /* ---------- execução ---------- */
-
-class Semaphore {
-  constructor(limit) {
-    this.limit = limit;
-    this.queue = [];
-  }
-
-  async acquire() {
-    if (this.limit > 0) {
-      this.limit--;
-      return;
-    }
-    await new Promise((resolve) => this.queue.push(resolve));
-  }
-
-  release() {
-    const next = this.queue.shift();
-    if (next) next();
-    else this.limit++;
-  }
-}
-
-// Impede que uma URL lenta ou com erro inesperado bloqueie a fila inteira.
-function withTimeout(promise, ms, label) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`timeout: ${label}`)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-// Incluem tempo para fetch, diagnóstico DoH/modo aba e uma margem de segurança.
-const CHECK_TIMEOUT_MS = 50000;
-const TIKTOK_CHECK_TIMEOUT_MS = 75000;
-const ENRICH_TIMEOUT_MS = 15000;
-
-function safeHost(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
+// Semaphore, withTimeout, safeHost, timeoutResult, cancelledResult, checkUrlWithRetry e o
+// próprio laço de concorrência/retry/fila do TikTok vivem em lib/batchRunner.js (runBatch),
+// testável sem DOM. Este arquivo só fornece os hooks que ligam esse motor à página.
 
 function applyManualClassification(result) {
   const manualStatus = state.manualClassifications[result.url];
@@ -151,77 +112,6 @@ async function setManualClassifications(urls, status) {
   scheduleRender();
 }
 
-function timeoutResult(url, err) {
-  const isTimeout = /^timeout/.test(String((err && err.message) || err));
-  const platform = detectPlatform(new URL(url));
-  return {
-    url, host: safeHost(url), platform: platform?.id || null, platformName: platform?.name || null,
-    kind: platform?.kind || 'site',
-    checkedAt: new Date().toISOString(), via: 'fetch', httpStatus: null, finalUrl: '', redirected: false,
-    title: '', faviconUrl: '', faviconData: '', status: 'indeterminado',
-    reason: isTimeout
-      ? 'Tempo esgotado — a verificação desta URL foi interrompida para não travar a análise das demais'
-      : `Erro inesperado ao analisar: ${(err && err.message) || err}`,
-    confidence: 'baixa', tags: isTimeout ? ['timeout'] : ['erro'], sha256: '', info: {},
-  };
-}
-
-function cancelledResult(url) {
-  const platform = detectPlatform(new URL(url));
-  return {
-    url, host: safeHost(url), platform: platform?.id || null, platformName: platform?.name || null, kind: platform?.kind || 'site',
-    checkedAt: new Date().toISOString(), via: 'fetch', httpStatus: null, finalUrl: '', redirected: false,
-    title: '', faviconUrl: '', faviconData: '', status: 'indeterminado',
-    reason: 'Análise cancelada pelo usuário', confidence: 'baixa', tags: ['cancelado'], sha256: '', info: {},
-  };
-}
-
-const RETRY_TIMEOUT_MS = 25000; // segunda tentativa, mais curta — falha de rede costuma ser passageira
-
-/** Cancela o trabalho que excedeu o prazo antes de iniciar uma nova tentativa. */
-async function checkUrlWithRetry(url, ctx, signal) {
-  const platform = detectPlatform(new URL(url));
-  const isFacebookMarketplace = platform?.id === 'facebook' && platform.kind === 'marketplace';
-  const runAttempt = (timeoutMs, label) => {
-    const controller = new AbortController();
-    const unlink = linkAbort(controller, signal);
-    const attempt = withTimeout(
-      checkUrl(url, { ...ctx, signal: controller.signal }),
-      timeoutMs,
-      label,
-    );
-    return attempt.catch((err) => {
-      controller.abort();
-      throw err;
-    }).finally(unlink);
-  };
-  try {
-    const timeoutMs = platform?.id === 'tiktok' ? TIKTOK_CHECK_TIMEOUT_MS : CHECK_TIMEOUT_MS;
-    return await runAttempt(timeoutMs, `checkUrl ${url}`);
-  } catch (err) {
-    const isTimeout = /^timeout/.test(String((err && err.message) || err));
-    if (!isTimeout || isFacebookMarketplace || platform?.id === 'tiktok' || (signal && signal.aborted)) throw err;
-    return await runAttempt(RETRY_TIMEOUT_MS, `checkUrl retry ${url}`);
-  }
-}
-
-function linkAbort(controller, signal) {
-  if (!signal) return () => {};
-  if (signal.aborted) {
-    controller.abort();
-    return () => {};
-  }
-  const onAbort = () => controller.abort();
-  signal.addEventListener('abort', onAbort);
-  return () => signal.removeEventListener('abort', onAbort);
-}
-
-// O tamanho do pool de workers abaixo (Promise.all) já É o teto global de concorrência:
-// no máximo GLOBAL_CONCURRENCY URLs são processadas ao mesmo tempo, não importa quantos hosts
-// distintos existam no lote (o limite por host/plataforma, em semFor, é um teto ADICIONAL
-// mais apertado para não martelar um único domínio).
-const GLOBAL_CONCURRENCY = 6;
-
 async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   state.running = true;
   state.cancelled = false;
@@ -251,127 +141,24 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     signal: state.abort.signal,
     opts: {
       tabMode,
-      timeoutMs: 15000,
+      timeoutMs: FETCH_PAGE_TIMEOUT_MS,
       customRules: state.settings.customRules.map((rule) => ({
         ...rule,
         normalizedTerm: norm(rule.term),
       })),
     },
   };
-  // Limite global é complementado por limites por plataforma/host para não concentrar requisições num destino.
-  const sems = new Map();
-  const tiktokQueue = createTikTokQueue();
-  const semFor = (url) => {
-    const u = new URL(url);
-    const p = detectPlatform(u);
-    const isFacebookMarketplace = p?.id === 'facebook' && p.kind === 'marketplace';
-    const key = isFacebookMarketplace ? 'facebook-marketplace' : p ? p.id : u.hostname;
-    const limit = isFacebookMarketplace ? 1 : p ? 2 : 3;
-    if (!sems.has(key)) sems.set(key, new Semaphore(limit));
-    return sems.get(key);
-  };
-
-  let next = 0;
-  let tiktokQueuePauseReason = '';
-  let tiktokPausedCount = 0;
-  const worker = async () => {
-    while (next < urls.length) {
-      if (state.abort.signal.aborted) break; // não inicia novas URLs depois de "Cancelar análise"
-      const url = urls[next++];
-      const platform = detectPlatform(new URL(url));
-      const isTikTok = platform?.id === 'tiktok';
-      const sem = isTikTok ? null : semFor(url);
-      const tiktokTurn = isTikTok ? await tiktokQueue.acquire(state.abort.signal) : null;
-      if (sem) await sem.acquire();
-      state.active++;
-      setProgress();
-      try {
-        let res;
-        const startedAt = performance.now();
-        let analysisMs = 0;
-        let enrichmentMs = 0;
-        try {
-          if (isTikTok && !tiktokTurn.proceed) {
-            tiktokPausedCount++;
-            res = {
-              url,
-              host: safeHost(url),
-              platform: platform.id,
-              platformName: platform.name,
-              kind: platform.kind,
-              checkedAt: new Date().toISOString(),
-              via: 'fetch',
-              httpStatus: null,
-              finalUrl: '',
-              redirected: false,
-              title: '',
-              faviconUrl: '',
-              faviconData: '',
-              status: 'indeterminado',
-              reason: `Verificação do TikTok pausada neste lote: ${tiktokTurn.reason}. Tente novamente mais tarde.`,
-              confidence: 'baixa',
-              tags: ['anti-bot', 'queue-paused'],
-              sha256: '',
-              info: {
-                tabAttempted: false,
-                tabFallback: 'Não iniciada: fila TikTok pausada após limite ou desafio anti-bot',
-              },
-            };
-          } else {
-            const analysisStartedAt = performance.now();
-            try {
-              res = await checkUrlWithRetry(url, ctx, state.abort.signal);
-            } finally {
-              analysisMs = performance.now() - analysisStartedAt;
-            }
-            if (isTikTok && shouldPauseTikTokQueue(res)) {
-              tiktokQueuePauseReason = res.httpStatus === 429
-                ? 'foi recebida uma resposta HTTP 429 (limite de consultas)'
-                : 'foi detectada uma tela de verificação anti-bot';
-              tiktokQueue.pause(tiktokQueuePauseReason);
-            }
-            if (!isTikTok || !shouldPauseTikTokQueue(res)) {
-              const enrichmentStartedAt = performance.now();
-              try {
-                await withTimeout(enrich(res, {
-                  fetchFn: ctx.fetchFn,
-                  doh: ctx.doh,
-                }), ENRICH_TIMEOUT_MS, `enrich ${url}`);
-              } finally {
-                enrichmentMs = performance.now() - enrichmentStartedAt;
-              }
-            }
-          }
-        } catch (err) {
-          res = timeoutResult(url, err);
-        }
-        if (!state.abort.signal.aborted) applyManualClassification(res);
-        res.info = res.info || {};
-        res.info.timings = {
-          analysisMs: Math.round(analysisMs),
-          enrichmentMs: Math.round(enrichmentMs),
-          totalMs: Math.round(performance.now() - startedAt),
-        };
-        if (state.abort.signal.aborted) res = cancelledResult(url);
-        else applyHistory(hist, res);
-        state.results.set(url, res);
-      } finally {
-        state.active--;
-        if (tiktokTurn) tiktokTurn.release();
-        else sem.release();
-      }
-      state.done++;
-      setProgress();
-      scheduleRender();
-    }
-  };
-  await Promise.all(Array.from({ length: GLOBAL_CONCURRENCY }, worker));
-  if (state.abort.signal.aborted) {
-    for (const url of urls.slice(next)) {
-      state.results.set(url, cancelledResult(url));
-      state.done++;
-    }
-  }
+  // A concorrência global, os semáforos por host/plataforma e a fila do TikTok vivem em
+  // runBatch (lib/batchRunner.js); aqui só ligamos os hooks dela ao estado/DOM da página.
+  const { tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(urls, ctx, hist, {
+    onActiveChange: (delta) => { state.active += delta; },
+    onDone: () => { state.done++; },
+    onResult: (url, res) => { state.results.set(url, res); },
+    onProgress: () => setProgress(),
+    onRender: () => scheduleRender(),
+    applyManualClassification,
+    applyHistory,
+  });
   clearInterval(progressTimer);
   await closeReusableTab();
   try {

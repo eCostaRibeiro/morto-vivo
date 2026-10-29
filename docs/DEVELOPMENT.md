@@ -24,7 +24,8 @@ npm test
 ```
 
 Os testes cobrem classificação e análise, sondas de plataformas, DNS, normalização,
-segurança de rede, leitura em aba, armazenamento, exportações e feedback sonoro. São testes
+segurança de rede, leitura em aba, orquestração do lote (concorrência, retry e fila do
+TikTok em `lib/batchRunner.js`), armazenamento, exportações e feedback sonoro. São testes
 locais; não validam a resposta ao vivo de plataformas de terceiros nem substituem um teste
 manual no Chrome/Vivaldi.
 
@@ -36,16 +37,29 @@ manual no Chrome/Vivaldi.
 - `rules.html` / `rules.js` / `rules.css`: edição, validação e importação/exportação CSV
   das regras personalizadas.
 - `results.html` / `results.js` / `results.css`: estrutura e estilos responsivos da tela de
-  resultados; `results.js` coordena fila, estado, exportações e retorno ao topo.
+  resultados; `results.js` liga o estado da página e os elementos da UI ao motor de
+  orquestração em `lib/batchRunner.js` (progresso, render, histórico, exportações e retorno
+  ao topo continuam aqui).
+- `lib/batchRunner.js`: motor de orquestração do lote — concorrência global, semáforos por
+  host/plataforma, integração com a fila do TikTok e retry por timeout (`runBatch`,
+  `checkUrlWithRetry`). Não depende do DOM; `results.js` injeta progresso/render/histórico
+  via hooks, o que permite testar esse motor com `node --test` (`tests/batchRunner.test.mjs`).
+- `lib/config.js`: único lugar com os timeouts, intervalos e limites de concorrência usados
+  na análise (fetch, probes, modo aba, fila do TikTok, orquestração do lote). Ajuste um
+  valor aqui em vez de procurar o número em cada arquivo.
 - `lib/resultsView.js`: renderização dos resultados em blocos de até 50 por categoria,
   filtros, seleção e ações da interface.
 - `background.js`: criação das notificações por solicitação da interface.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação pura das evidências coletadas, incluindo regras
   contextuais para Facebook/Meta e estados públicos de perfis/conteúdos TikTok.
-- `lib/rules.js`: identificação de plataformas e probes específicos (oEmbed de vídeos do
-  YouTube/TikTok, X, Bluesky, Discord e Shopee). `lib/classification.js` também valida o
-  estado público de vídeos e publicações de fotos do TikTok pelo ID e pelo destino canônico.
+- `lib/rules.js`: agrega o catálogo de plataformas e os padrões genéricos de detecção, e
+  identifica a plataforma de uma URL (`detectPlatform`). O conteúdo em si — regexes, catálogo
+  por site, sondas de API (oEmbed de YouTube/TikTok, X, Bluesky, Discord e Shopee) — vive em
+  `lib/platforms/*.js`, um arquivo por grupo de plataforma (`marketplaces.js`, `social.js`,
+  `messaging.js`, mais `genericPatterns.js` e `helpers.js`); mexa lá quando um site mudar o
+  texto de erro. `lib/classification.js` também valida o estado público de vídeos e
+  publicações de fotos do TikTok pelo ID e pelo destino canônico.
 - `lib/tiktokQueue.js`: serializa as verificações do TikTok, aplica intervalo entre URLs e
   pausa a fila da plataforma após HTTP 429 ou desafio explícito, sem interromper outros hosts.
 - `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba. Perfis
@@ -95,9 +109,9 @@ manual no Chrome/Vivaldi.
 6. Ao terminar um lote não cancelado, a tela mostra um resumo. Se habilitada, a notificação
    é enviada ao service worker por `chrome.runtime.sendMessage`.
 
-As constantes de concorrência, timeout e retry estão em `results.js`; os limites de entrada
-colada e TXT estão em `popup.js` e `lib/urlList.js`. Preserve limites por host e a validação
-de segurança ao modificar o fluxo. O CSV de regras usa `status;frase`, com BOM UTF-8,
+As constantes de concorrência, timeout e retry estão em `lib/config.js`, consumidas por
+`lib/batchRunner.js`; os limites de entrada colada e TXT estão em `popup.js` e
+`lib/urlList.js`. Preserve limites por host e a validação de segurança ao modificar o fluxo. O CSV de regras usa `status;frase`, com BOM UTF-8,
 escaping de campos e proteção contra fórmulas de planilha.
 
 ## Convenções para mudanças
