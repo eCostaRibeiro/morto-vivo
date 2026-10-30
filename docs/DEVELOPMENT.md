@@ -34,6 +34,8 @@ manual no Chrome/Vivaldi.
 - `manifest.json`: versão, permissões, popup, ícones e service worker.
 - `popup.html` / `popup.js` / `popup.css`: entrada colada, importação TXT, contador,
   opções, estilos do popup e abertura do lote.
+- `history.html` / `history.js` / `history.css`: consulta, filtro, limpeza e reexecução das
+  100 últimas análises locais.
 - `rules.html` / `rules.js` / `rules.css`: edição, validação e importação/exportação CSV
   das regras personalizadas.
 - `results.html` / `results.js` / `results.css`: estrutura e estilos responsivos da tela de
@@ -70,6 +72,8 @@ manual no Chrome/Vivaldi.
 - `lib/evidence.js`: enriquecimento de evidências, incluindo favicon.
 - `lib/history.js` / `lib/customRules.js`: preferências, histórico, validação das regras
   personalizadas e conversão CSV no `chrome.storage.local`.
+- `lib/queryHistory.js`: persistência local e serializada das últimas 100 listas analisadas
+  e de suas favoritas.
 - `lib/urlList.js` / `lib/importedBatch.js`: parsing e deduplicação de listas, e transferência
   local de lotes TXT, preservados para atualização da página por até 24 horas.
   As operações que atualizam o índice compartilhado são serializadas com Web Locks para

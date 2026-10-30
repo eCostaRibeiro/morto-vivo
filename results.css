@@ -626,6 +626,17 @@ a.chip {
   background: rgba(103,80,164,.18);
   box-shadow: 0 0 0 3px rgba(103,80,164,.12);
 }
+.result-item.copied::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -2%;
+  width: 104%;
+  border-top: 2px solid var(--md-primary);
+  transform: rotate(-1.5deg);
+  pointer-events: none;
+  z-index: 3;
+}
 .result-item.opened {
   outline: 2px dashed var(--md-opened);
   background: var(--md-opened-strong-surface);
@@ -658,8 +669,18 @@ a.chip {
   border-left: 5px solid var(--md-outline);
 }
 .interaction-swatch.copied {
+  position: relative;
   outline: 2px solid var(--md-primary);
   background: rgba(103,80,164,.18);
+}
+.interaction-swatch.copied::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -2px;
+  width: calc(100% + 4px);
+  border-top: 2px solid var(--md-primary);
+  transform: rotate(-4deg);
 }
 .interaction-swatch.opened {
   outline: 2px dashed var(--md-opened);

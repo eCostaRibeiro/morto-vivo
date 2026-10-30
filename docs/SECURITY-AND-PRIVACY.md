@@ -58,7 +58,8 @@ de um proxy de saída ou de controles de rede corporativos.
 
 ## Dados locais
 
-- Configurações e histórico são gravados em `chrome.storage.local`.
+- Configurações e históricos são gravados em `chrome.storage.local`, no perfil local do
+  navegador; não são enviados a um servidor do Morto-Vivo.
 - Uma lista TXT importada é validada no popup e armazenada localmente sob um identificador
   aleatório para chegar à página de resultados; ela permanece disponível para recarga da
   página por até 24 horas e, após esse prazo, é removida na próxima importação ou abertura
@@ -69,9 +70,13 @@ de um proxy de saída ou de controles de rede corporativos.
   prefixos que planilhas poderiam interpretar como fórmulas.
 - O histórico guarda status anterior, status mais recente, motivos e horários por URL; é
   limitado a 3.000 URLs e até 20 mudanças por URL.
+- O histórico de análises guarda as URLs consultadas, horário e contagem por status das
+  últimas 100 análises, para permitir refazê-las. Pesquisas favoritas são mantidas em uma
+  seção separada mesmo após saírem das 100 recentes. O histórico é independente do histórico
+  por URL e pode ser apagado na tela **Histórico de análises**.
 - Classificações manuais também são guardadas localmente por URL, separadas do histórico
   automático, limitadas a 3.000 entradas e removidas apenas ao substituí-las manualmente
-  nos cards; **Limpar histórico** não as apaga.
+  nos cards; limpar qualquer um dos históricos não as apaga.
 - O favicon é mantido em memória na sessão de resultados para evitar downloads repetidos;
   não é persistido no histórico.
 - Capturas de tela não são feitas nem armazenadas.

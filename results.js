@@ -19,6 +19,7 @@ import {
 } from './lib/manualClassification.js';
 import { FETCH_PAGE_TIMEOUT_MS } from './lib/config.js';
 import { runBatch } from './lib/batchRunner.js';
+import { addQueryHistory } from './lib/queryHistory.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
@@ -42,7 +43,7 @@ const state = {
   open: new Set(),
   opened: new Set(),
   selected: new Set(),
-  copiedUrl: null,
+  copiedUrls: new Set(),
   announcedSelectionCount: 0,
   total: 0,
   done: 0,
@@ -166,6 +167,15 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   } catch (err) {
     showStorageWarning(`Não foi possível salvar o histórico desta análise. Detalhe: ${(err && err.message) || err}`);
   }
+  try {
+    const summary = Object.fromEntries(CATEGORIES.map(({ status }) => [
+      status,
+      urls.filter((url) => state.results.get(url)?.status === status).length,
+    ]));
+    await addQueryHistory(urls, summary);
+  } catch (err) {
+    showStorageWarning(`Não foi possível salvar esta análise no histórico de consultas. Detalhe: ${(err && err.message) || err}`);
+  }
   state.running = false;
   setProgress();
   scheduleRender();
@@ -229,6 +239,7 @@ $('btnCancelar').addEventListener('click', () => {
 });
 
 $('btnManageRules').addEventListener('click', () => window.open('rules.html', '_blank'));
+$('btnQueryHistory').addEventListener('click', () => window.open('history.html', '_blank'));
 $('bulkClassification').addEventListener('change', async (event) => {
   const select = event.currentTarget;
   if (!select.value || !state.selected.size || state.running) return;
@@ -357,8 +368,16 @@ $('btnJson').addEventListener('click', () => {
 });
 $('btnCopy').addEventListener('click', async () => {
   closeActionMenu($('btnCopy').closest('details'));
-  const text = all().filter((r) => r.status === 'morto').map((r) => defang(r.url)).join('\n');
-  try { await navigator.clipboard.writeText(text); $('btnCopy').textContent = 'Copiado ✓'; } catch { prompt('Copie:', text); }
+  const deadResults = all().filter((r) => r.status === 'morto');
+  const text = deadResults.map((r) => defang(r.url)).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    deadResults.forEach((r) => state.copiedUrls.add(r.url));
+    scheduleRender();
+    $('btnCopy').textContent = 'Copiado ✓';
+  } catch {
+    prompt('Copie:', text);
+  }
   setTimeout(() => { $('btnCopy').textContent = 'Copiar mortos (defang)'; }, 2000);
 });
 $('btnRecheck').addEventListener('click', async () => {

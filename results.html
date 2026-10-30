@@ -10,6 +10,9 @@
   <header class="header">
     <h1><span aria-hidden="true">🧟‍♂️🔗</span> Resultados - Morto-Vivo</h1>
     <span class="header-version" id="extensionVersion"></span>
+    <button class="header-action" id="btnQueryHistory" type="button" aria-label="Abrir histórico de análises" title="Ver as últimas 100 análises">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3Zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8H12Z"/></svg>
+    </button>
     <button class="header-action" id="btnManageRules" type="button" aria-label="Gerenciar regras de classificação" title="Gerenciar regras de classificação">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.49.49 0 0 0 13.89 2h-3.78a.49.49 0 0 0-.49.42L9.26 4.96c-.59.23-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0-.05.94 7.5 7.5 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.49.39 1.04.71 1.63.94l.36 2.54a.49.49 0 0 0 .49.42h3.78a.49.49 0 0 0 .49-.42l.36-2.54c.59-.23 1.14-.55 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
     </button>
@@ -91,7 +94,7 @@
       <b>Indeterminado</b>: anti-bot, login obrigatório ou página que só renderiza com JavaScript. Confiança baixa/média = confirme manualmente antes de reportar.
       <div class="interaction-legend" role="group" aria-label="Legenda dos destaques dos registros">
         <span class="interaction-key"><span class="interaction-swatch normal" aria-hidden="true"></span>Normal</span>
-        <span class="interaction-key"><span class="interaction-swatch copied" aria-hidden="true"></span>Copiado (contorno roxo)</span>
+        <span class="interaction-key"><span class="interaction-swatch copied" aria-hidden="true"></span>Copiado (riscado)</span>
         <span class="interaction-key"><span class="interaction-swatch opened" aria-hidden="true"></span>Aberto (contorno verde tracejado)</span>
         <span>Um registro pode mostrar os dois destaques se for copiado e aberto.</span>
       </div>

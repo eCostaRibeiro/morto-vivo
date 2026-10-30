@@ -49,6 +49,7 @@ async function persist() {
 }
 $('tabMode').addEventListener('change', persist);
 $('btnManageRules').addEventListener('click', () => window.open('rules.html', '_blank'));
+$('btnQueryHistory').addEventListener('click', () => window.open('history.html', '_blank'));
 $('completionNotification').addEventListener('change', (event) => {
   const checkbox = event.currentTarget;
   if (!checkbox.checked) {
@@ -90,7 +91,7 @@ $('completionNotification').addEventListener('change', (event) => {
 $('btnLimpar').addEventListener('click', async () => {
   try {
     await clearHistory();
-    $('btnLimpar').textContent = 'Histórico limpo ✓';
+    $('btnLimpar').textContent = 'Comparações limpas ✓';
     clearStorageNotice();
   } catch (err) {
     showStorageNotice(`Não foi possível limpar o histórico. Verifique o armazenamento da extensão e tente novamente. Detalhe: ${(err && err.message) || err}`);

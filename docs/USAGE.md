@@ -13,7 +13,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.56** antes de testar as correções recentes do Modo aba.
+   **2.57** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -50,6 +50,16 @@ rápidas. Ao navegar com teclado, use Tab para chegar aos controles e Enter ou E
 acioná-los; os rótulos e descrições principais das opções também ficam visíveis no popup.
 O botão de engrenagem no cabeçalho do popup ou da página de resultados abre o gerenciador
 de regras de classificação.
+
+## Histórico de análises
+
+Use o botão de histórico no popup ou na página de resultados para consultar as 100 análises
+mais recentes. Cada registro mostra a data, o total de URLs e o resumo dos status; a busca
+filtra pelos endereços consultados. Use **☆ Favoritar** para guardar uma análise na seção
+**Favoritadas**, mesmo depois que ela sair das 100 recentes. **Refazer análise** abre uma
+nova página de resultados com a mesma lista, usando as configurações atuais. As consultas
+ficam salvas localmente no navegador e podem ser apagadas nessa tela. Esse histórico é
+separado das comparações de status por URL, que continuam disponíveis nas opções do popup.
 
 ## Filtros de resultados
 
@@ -337,8 +347,9 @@ redução de movimento e cores de alto contraste.
 
 ## Histórico e armazenamento
 
-O histórico local mantém o status anterior por URL para destacar mudanças entre verificações.
-Use **Limpar histórico de verificações** no popup para removê-lo. O histórico não é um
+O histórico de status por URL mantém o status anterior para destacar mudanças entre
+verificações. Use **Limpar histórico de status por URL** nas opções do popup para removê-lo;
+isso não apaga as listas salvas em **Histórico de análises**. O histórico não é um
 agendador: a extensão não monitora URLs automaticamente em segundo plano nem executa
 verificações periódicas.
 

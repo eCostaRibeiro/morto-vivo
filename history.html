@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Histórico de análises - Morto-Vivo</title>
+  <link rel="stylesheet" href="results.css">
+  <link rel="stylesheet" href="history.css">
+</head>
+<body>
+  <header class="header">
+    <h1><span aria-hidden="true">🧟‍♂️🔗</span> Histórico de análises</h1>
+    <button class="header-action" id="btnManageRules" type="button" aria-label="Gerenciar regras de classificação" title="Gerenciar regras de classificação">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.49.49 0 0 0 13.89 2h-3.78a.49.49 0 0 0-.49.42L9.26 4.96c-.59.23-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0-.05.94 7.5 7.5 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.49.39 1.04.71 1.63.94l.36 2.54a.49.49 0 0 0 .49.42h3.78a.49.49 0 0 0 .49-.42l.36-2.54c.59-.23 1.14-.55 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+    </button>
+  </header>
+  <main class="container history-container">
+    <div class="history-intro">
+      <div>
+        <p class="history-lead">Suas consultas recentes, salvas somente neste navegador.</p>
+        <p class="history-subtitle">As 100 análises mais recentes ficam disponíveis para refazer quando quiser.</p>
+      </div>
+      <a class="btn history-back" href="popup.html" title="Voltar para iniciar uma nova análise">Nova análise</a>
+    </div>
+    <div class="history-toolbar">
+      <label class="sr-only" for="historySearch">Buscar nos endereços consultados</label>
+      <input id="historySearch" type="search" placeholder="Buscar nas URLs do histórico…" autocomplete="off">
+      <span id="historyCount" class="history-count" role="status" aria-live="polite"></span>
+      <button class="btn history-clear" id="btnClearQueryHistory" type="button">Limpar histórico</button>
+    </div>
+    <div id="historyError" class="error-box" role="alert" hidden></div>
+    <section class="history-section" aria-labelledby="favoritesHeading">
+      <div class="history-section-heading">
+        <div>
+          <h2 id="favoritesHeading">Favoritadas</h2>
+          <p>Suas pesquisas importantes, sempre à mão.</p>
+        </div>
+        <span id="favoritesCount" class="history-section-count"></span>
+      </div>
+      <div id="favoritesList" class="history-list"></div>
+      <p id="favoritesEmpty" class="empty-state" hidden>Nenhuma pesquisa favorita ainda. Use ☆ em uma análise para guardá-la aqui.</p>
+    </section>
+    <section class="history-section" aria-labelledby="recentHeading">
+      <div class="history-section-heading">
+        <div>
+          <h2 id="recentHeading">Recentes</h2>
+          <p>As 100 análises mais recentes feitas neste navegador.</p>
+        </div>
+        <span id="recentCount" class="history-section-count"></span>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+    <p id="historyEmpty" class="empty-state" hidden>Nenhuma análise encontrada. As próximas consultas aparecerão aqui.</p>
+    <p id="historyNoMatches" class="empty-state" hidden>Nenhuma análise corresponde à busca.</p>
+  </main>
+  <script type="module" src="history.js"></script>
+</body>
+</html>
