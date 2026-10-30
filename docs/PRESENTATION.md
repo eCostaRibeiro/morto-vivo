@@ -91,6 +91,58 @@ Investigar listas de URLs manualmente é lento e difícil de repetir.
 
 ---
 
+<!-- LAYOUT: duas capturas lado a lado; popup menor à esquerda e configuração de regras à direita. -->
+<!-- VISUAL: capturas reais da interface, com dados demonstrativos e sem navegação para sites externos. -->
+
+# Interfaces: entrada e configuração
+
+<div style="display:grid;grid-template-columns:0.8fr 1.2fr;gap:1rem;align-items:start">
+  <figure style="margin:0;text-align:center">
+    <img src="assets/presentation/popup.png" alt="Popup com uma lista de URLs fictícias pronta para verificação" style="height:4.5in;max-width:100%;object-fit:contain">
+    <figcaption><strong>Popup:</strong> entrada, validação e preferências do lote.</figcaption>
+  </figure>
+  <figure style="margin:0;text-align:center">
+    <img src="assets/presentation/rules.png" alt="Editor de regras personalizadas com exemplos demonstrativos para morto e zumbi" style="height:4.5in;max-width:100%;object-fit:contain">
+    <figcaption><strong>Regras:</strong> frases literais configuráveis e aplicadas às análises.</figcaption>
+  </figure>
+</div>
+
+<small>Capturas renderizadas localmente; as URLs e regras exibidas são sintéticas.</small>
+
+<!-- NOTAS: A imagem mostra as interfaces da versão 2.56 e não representa dados de uma investigação real. -->
+
+---
+
+<!-- LAYOUT: captura ampla centralizada, com espaço inferior para uma legenda curta. -->
+<!-- VISUAL: mostrar progresso, filtros e registros classificados como vivo/zumbi. -->
+
+# Resultados na prática · 1/2
+
+<img src="assets/presentation/results.png" alt="Tela de resultados com progresso do lote, contadores por categoria e exemplos de links vivos e zumbis" style="display:block;max-height:5.25in;max-width:100%;object-fit:contain;margin:0 auto">
+
+**Visão do lote:** progresso, filtros e evidências resumidas por registro.
+
+<small>Resposta de rede simulada localmente; nenhum endereço externo foi consultado.</small>
+
+<!-- NOTAS: Os exemplos mostram uma resposta HTTP 200 e uma resposta HTTP 503; são dados sintéticos. -->
+
+---
+
+<!-- LAYOUT: captura ampla centralizada; destacar estados definitivos e casos que pedem revisão. -->
+<!-- VISUAL: mostrar os grupos morto e indeterminado e os respectivos motivos. -->
+
+# Resultados na prática · 2/2
+
+<img src="assets/presentation/results-details.png" alt="Detalhes de resultados classificados como morto por HTTP 404 e indeterminado por exigência de autenticação HTTP 401" style="display:block;max-height:5.25in;max-width:100%;object-fit:contain;margin:0 auto">
+
+**Revisão humana:** “morto” vem acompanhado da evidência observada; “indeterminado” permanece separado quando falta acesso público.
+
+<small>Respostas HTTP 404 e 401 simuladas localmente; não representam uma consulta real.</small>
+
+<!-- NOTAS: Reforçar que a categoria indeterminada não deve ser interpretada como removida. -->
+
+---
+
 <!-- LAYOUT: diagrama de camadas ocupando a metade esquerda; fronteiras e responsabilidades à direita. -->
 <!-- VISUAL: cores distintas para interface, orquestração, adaptadores e persistência; setas representam dados. -->
 
