@@ -1,5 +1,9 @@
 # Guia de uso
 
+As imagens deste guia usam endereços e resultados sintéticos, não consultas reais. Elas
+ilustram as telas principais; a disposição pode variar com o tamanho da janela e alguns
+controles podem ter mudado desde a captura.
+
 ## Instalar ou atualizar a extensão
 
 O Morto-Vivo é atualmente distribuído como extensão Manifest V3 para Google Chrome e Vivaldi.
@@ -45,6 +49,11 @@ URLs válidas e únicas em relação ao limite, por exemplo `30/200`; acima do l
 que somente as primeiras 200 serão analisadas. A revisão da entrada também informa URLs
 inválidas e duplicadas; as inválidas mostram os critérios básicos aceitos.
 
+<figure>
+  <img src="assets/presentation/popup.png" alt="Popup com três URLs fictícias, contador, botão de verificação, importação TXT e opções recolhidas" width="420">
+  <figcaption>Tela inicial: cole uma URL por linha ou abra a importação TXT para um lote maior.</figcaption>
+</figure>
+
 Na página de resultados, passe o mouse sobre botões, status e indicadores para ver dicas
 rápidas. Ao navegar com teclado, use Tab para chegar aos controles e Enter ou Espaço para
 acioná-los; os rótulos e descrições principais das opções também ficam visíveis no popup.
@@ -61,6 +70,16 @@ nova página de resultados com a mesma lista, usando as configurações atuais. 
 ficam salvas localmente no navegador e podem ser apagadas nessa tela. Esse histórico é
 separado das comparações de status por URL, que continuam disponíveis nas opções do popup.
 
+Na tela, use o campo de busca para localizar endereços, **☆ Favoritar** para guardar uma
+consulta, **Refazer análise** para abrir um novo lote e **Limpar histórico** para apagar as
+consultas salvas. A seção **Favoritadas** não é removida quando uma análise deixa a lista
+das 100 recentes.
+
+<figure>
+  <img src="assets/presentation/history.png" alt="Histórico de análises com pesquisa favorita, consultas recentes, busca, resumo dos status e ações para favoritar ou refazer" width="900">
+  <figcaption>Histórico demonstrativo: consulte URLs e status, favorite uma pesquisa ou refaça a análise. Os registros mostrados são fictícios.</figcaption>
+</figure>
+
 ## Filtros de resultados
 
 Na página de resultados, o filtro **Tipo: todos** pode limitar a lista por categoria de
@@ -68,6 +87,11 @@ endereço. **Mensageria** reúne links reconhecidos de Telegram (`t.me`/`telegra
 convites e links de conversa do WhatsApp (`chat.whatsapp.com`, `wa.me` e
 `api.whatsapp.com`) e Discord (`discord.gg`/`discord.com`). O filtro só altera quais
 resultados são exibidos; não muda a análise nem o status dos links.
+
+<figure>
+  <img src="assets/presentation/results.png" alt="Página de resultados demonstrativa com progresso, resumo por status, busca, filtro de tipo e cards classificados" width="900">
+  <figcaption>Resumo do lote, filtros e cartões organizados por categoria. Use a busca para filtrar URL, título, plataforma, motivo ou status.</figcaption>
+</figure>
 
 ## Interpretar os resultados
 
@@ -117,6 +141,11 @@ O resultado é uma avaliação técnica do que estava acessível no momento da c
 exemplo, “indisponível publicamente” não prova necessariamente que uma conta ou publicação
 foi excluída: privacidade, região, login e mudanças da plataforma também podem afetar a
 resposta. Confirme manualmente resultados importantes antes de tomar decisões.
+
+<figure>
+  <img src="assets/presentation/results-details.png" alt="Categorias Mortos e Indeterminados com exemplos fictícios de HTTP 404 e autenticação HTTP 401" width="900">
+  <figcaption>Exemplos das categorias Morto e Indeterminado. O status vem acompanhado do motivo; abra **Mais → Detalhes** no cartão para consultar evidências completas.</figcaption>
+</figure>
 
 ### TikTok e Facebook
 
@@ -235,6 +264,11 @@ não enviam notificação de conclusão.
 Clique na engrenagem do cabeçalho do popup ou da página de resultados para abrir o
 gerenciador de regras. Adicione cada regra escolhendo `vivo`, `zumbi` ou `morto` e
 informando uma frase literal. Por exemplo:
+
+<figure>
+  <img src="assets/presentation/rules.png" alt="Gerenciador demonstrativo com duas regras literais, opções de importação e exportação CSV e botão para salvar" width="900">
+  <figcaption>Editor de regras: escolha o status, escreva uma frase distintiva e salve para aplicar nas próximas análises.</figcaption>
+</figure>
 
 ```text
 morto | anúncio removido
