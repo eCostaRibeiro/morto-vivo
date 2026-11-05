@@ -42,7 +42,7 @@ test('missing stored values still use empty history and default settings', async
   }, async () => {
     assert.deepEqual(await loadHistory(), {});
     assert.deepEqual(await loadSettings(), {
-      tabMode: false, completionNotification: false, customRules: [],
+      tabMode: false, completionNotification: false, markCheckedUrls: false, customRules: [],
     });
   });
 });
@@ -101,12 +101,30 @@ test('ignores and removes legacy settings', async () => {
     remove: async () => {},
   }, async () => {
     assert.deepEqual(await loadSettings(), {
-      tabMode: true, completionNotification: true, customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
     });
     await saveSettings(await loadSettings());
     assert.deepEqual(storedSettings, {
-      tabMode: true, completionNotification: true, customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
     });
+  });
+});
+
+test('persists the page URL marker preference', async () => {
+  let storedSettings;
+  await withChromeStorage({
+    get: async () => ({ mv_settings: storedSettings }),
+    set: async (values) => { storedSettings = values.mv_settings; },
+    remove: async () => {},
+  }, async () => {
+    await saveSettings({
+      tabMode: false,
+      completionNotification: false,
+      markCheckedUrls: true,
+      customRules: [],
+    });
+    assert.equal((await loadSettings()).markCheckedUrls, true);
+    assert.equal(storedSettings.markCheckedUrls, true);
   });
 });
 
@@ -129,6 +147,7 @@ test('persists only valid custom classification rules', async () => {
     assert.deepEqual(await loadSettings(), {
       tabMode: false,
       completionNotification: false,
+      markCheckedUrls: false,
       customRules: [{ status: 'morto', term: 'anúncio removido' }],
     });
   });

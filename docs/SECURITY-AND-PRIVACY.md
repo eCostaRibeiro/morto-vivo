@@ -5,7 +5,8 @@
 O manifesto solicita:
 
 - `storage`: salvar configurações e histórico local de verificações.
-- `scripting`: ler o DOM em uma aba do navegador no modo aba.
+- `scripting`: ler o DOM em uma aba no modo aba e, quando **Marcar URLs verificadas nas
+  páginas** estiver ativado, identificar links em páginas HTTP/HTTPS e aplicar as etiquetas.
 - `debugger`: instalar o guard de rede usado pela leitura em aba. O Chromium não permite
   declarar essa permissão como opcional, então ela é solicitada na instalação da extensão,
   mesmo que o modo aba não seja usado.
@@ -14,8 +15,10 @@ O manifesto solicita:
   de notificação.
 
 O navegador pode apresentar avisos de permissões amplas, especialmente para acesso a sites
-e depuração. Esses acessos existem para os fluxos de análise; não habilite o modo aba em um
-perfil com sessão sensível que não seja apropriado para a atividade.
+e depuração. A marcação de páginas é opcional, começa desativada e pode ser desligada no
+popup; com ela ativa, a extensão compara os links com o histórico local e observa alterações
+no conteúdo da página, sem enviar esse conteúdo para fora do navegador. O modo aba usa a
+sessão autenticada em sites compatíveis, então prefira um perfil dedicado.
 
 ## Tráfego de rede
 
@@ -77,6 +80,8 @@ de um proxy de saída ou de controles de rede corporativos.
 - Classificações manuais também são guardadas localmente por URL, separadas do histórico
   automático, limitadas a 3.000 entradas e removidas apenas ao substituí-las manualmente
   nos cards; limpar qualquer um dos históricos não as apaga.
+- A marcação visual usa essas classificações locais e só opera quando ativada nas opções.
+  Ela altera a apresentação dos links correspondentes na página, sem guardar conteúdo dela.
 - O favicon é mantido em memória na sessão de resultados para evitar downloads repetidos;
   não é persistido no histórico.
 - Capturas de tela não são feitas nem armazenadas.

@@ -128,6 +128,37 @@ test('keeps Facebook unavailable content indeterminate instead of treating priva
   assert.deepEqual(result.tags, ['content-unavailable']);
 });
 
+test('classifies the Facebook unavailable-now notice as a possible takedown', () => {
+  const url = 'https://www.facebook.com/profile.php?id=61594203218424';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    renderedText: 'Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Conteúdo indisponível publicamente no Facebook (possível takedown; remoção não confirmada)');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+});
+
+test('recognizes the English Facebook unavailable-now notice as a possible takedown', () => {
+  const url = 'https://www.facebook.com/profile.php?id=123';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    renderedText: "This content isn't available right now. This usually happens when the owner shared it with a small group, changed who can see it, or it was deleted.",
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'morto');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+});
+
 test('keeps restricted Facebook profile visibility indeterminate', () => {
   const url = 'https://www.facebook.com/example.page';
   const result = classifyPage({

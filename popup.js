@@ -30,6 +30,7 @@ function clearStorageNotice() {
   }
   $('tabMode').checked = s.tabMode;
   $('completionNotification').checked = s.completionNotification;
+  $('markCheckedUrls').checked = s.markCheckedUrls;
 })();
 
 async function persist() {
@@ -39,6 +40,7 @@ async function persist() {
       ...currentSettings,
       tabMode: $('tabMode').checked,
       completionNotification: $('completionNotification').checked,
+      markCheckedUrls: $('markCheckedUrls').checked,
     });
     clearStorageNotice();
     return true;
@@ -48,6 +50,7 @@ async function persist() {
   }
 }
 $('tabMode').addEventListener('change', persist);
+$('markCheckedUrls').addEventListener('change', persist);
 $('btnManageRules').addEventListener('click', () => window.open('rules.html', '_blank'));
 $('btnQueryHistory').addEventListener('click', () => window.open('history.html', '_blank'));
 $('completionNotification').addEventListener('change', (event) => {

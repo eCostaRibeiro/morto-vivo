@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.57** antes de testar os recursos recentes.
+   **2.60** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -192,10 +192,13 @@ os demais perfis TikTok: eles aparecem como não consultados, e não como falha 
 Frases de verificação em bios ou legendas de perfis não pausam a fila.
 
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
-modo aba pode fornecer conteúdo renderizado adicional. Mesmo assim, resultados ambíguos
-permanecem indeterminados: conteúdo indisponível publicamente pode ser privado ou restrito,
-sem que isso confirme remoção. Redirecionamentos para outro domínio também ficam
-indeterminados até que o destino seja confirmado.
+modo aba pode fornecer conteúdo renderizado adicional e aguarda até 8 segundos por texto de
+perfil, login ou indisponibilidade antes de capturar a página. A mensagem “Este conteúdo não
+está disponível no momento” é classificada como **Morto**, com confiança média e indicação
+de possível takedown: o link não está acessível publicamente, mas a mensagem não confirma
+que houve exclusão, pois também pode refletir privacidade ou mudança de público. Outros
+sinais genéricos de login ou restrição permanecem indeterminados. Redirecionamentos para
+outro domínio também ficam indeterminados até que o destino seja confirmado.
 
 ### Shopee
 
@@ -258,6 +261,15 @@ sistema operacional.
 O resumo da página aparece ao terminar um lote não cancelado, mesmo que as notificações do
 navegador estejam desativadas. Lotes cancelados e a ação **Refazer** de um único registro
 não enviam notificação de conclusão.
+
+### Marcação de URLs verificadas
+
+Ative **Marcar URLs verificadas nas páginas** para mostrar a classificação mais recente ao
+lado dos links reconhecidos em páginas HTTP/HTTPS, inclusive nas abas que já estavam abertas.
+A correspondência usa o endereço completo normalizado; o status mostrado considera uma
+classificação manual quando houver uma. A marcação acompanha links adicionados dinamicamente
+e é atualizada quando o histórico muda. Ela não faz novas consultas nem envia conteúdo da
+página. A opção começa desativada e pode ser desligada no popup para remover as marcas.
 
 ### Regras de classificação personalizadas
 

@@ -1567,6 +1567,37 @@ test('does not invent a Facebook profile title from a numeric profile ID', async
   assert.equal(result.title, '(16) Facebook');
 });
 
+test('waits for Facebook rendered unavailable content and reports a possible takedown', async () => {
+  const url = 'https://facebook.com/profile.php?id=61594203218424';
+  const message = 'Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.';
+  let tabOptions;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['157.240.1.35'] }),
+    fetchFn: async () => new Response('<title>Facebook</title>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    }),
+    readTab: async (tabUrl, options) => {
+      tabOptions = options;
+      return {
+        url: tabUrl,
+        heading: '',
+        html: '<title>Facebook</title>',
+        text: message,
+        hasPassword: false,
+      };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(tabOptions.waitForFacebookContent, true);
+  assert.equal(tabOptions.facebookWait, 8000);
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Conteúdo indisponível publicamente no Facebook (possível takedown; remoção não confirmada)');
+  assert.equal(result.confidence, 'média');
+  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+});
+
 test('reports why opaque-redirect fallback failed when tab reading errors', async () => {
   const result = await checkUrl('https://instagram.com/example_profile', {
     doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
