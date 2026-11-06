@@ -2,11 +2,12 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.62**, definida em `manifest.json`.
+extensão é **2.63**, definida em `manifest.json`.
 
 Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
-quando há estado público correspondente, valida o ID retornado pelo oEmbed ou pelo player
-incorporado e mostra nos detalhes o diagnóstico da resposta oEmbed. Não trata
+quando há estado público correspondente e exige que o ID desse estado corresponda à URL.
+Uma resposta oEmbed/player positiva não é considerada confirmação de vida, pois o TikTok pode
+mantê-la após a remoção; a extensão também mostra nos detalhes o diagnóstico do oEmbed. Não trata
 respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
 evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a

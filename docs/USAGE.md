@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.62** antes de testar os recursos recentes.
+   **2.63** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -152,7 +152,9 @@ resposta. Confirme manualmente resultados importantes antes de tomar decisões.
 O TikTok pode apresentar uma página de espera ou verificação anti-bot. Ela não é considerada
 prova de que um perfil esteja ativo ou removido. Para vídeos, o Morto-Vivo usa o estado
 público renderizado na página apenas quando o identificador corresponde ao vídeo da URL;
-uma indicação explícita de remoção é tratada separadamente. Publicações de fotos/carrosséis
+uma indicação explícita de remoção é tratada separadamente. Uma resposta positiva do oEmbed
+ou do player não confirma que o vídeo está ativo, pois pode continuar disponível após a
+remoção. Publicações de fotos/carrosséis
 também podem ser reconhecidas quando o estado público inclui imagens e o ID corresponde ao
 caminho da publicação. Links curtos `vm.tiktok.com`/`vt.tiktok.com` podem usar o oEmbed e,
 se redirecionarem, o destino canônico é usado para validar o estado capturado. Respostas de
