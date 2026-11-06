@@ -926,7 +926,14 @@ test('dedicated TikTok session opens home in a focused window and keeps its tab 
     windows: {
       getCurrent: async () => ({ id: 41 }),
       create: async (options) => {
-        assert.deepEqual(options, { url: 'about:blank', type: 'normal', focused: true });
+        assert.deepEqual(options, {
+          url: 'about:blank',
+          type: 'normal',
+          width: 900,
+          height: 750,
+          state: 'normal',
+          focused: true,
+        });
         return { id: 51 };
       },
       remove: async (windowId) => { removedWindows.push(windowId); },

@@ -25,7 +25,8 @@ async function openResultsWindow(urls, pageUrl) {
   const hasTikTok = urls.some((url) => detectPlatform(new URL(url))?.id === 'tiktok');
   const browserWindow = await chrome.windows.create({
     url: chrome.runtime.getURL(pageUrl),
-    type: 'normal',
+    type: hasTikTok ? 'popup' : 'normal',
+    ...(hasTikTok ? { width: 1100, height: 800, state: 'normal' } : {}),
     focused: !hasTikTok,
   });
   if (!Number.isInteger(browserWindow?.id)) {

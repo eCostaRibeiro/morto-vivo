@@ -177,7 +177,9 @@ essa aba navega apenas entre endereços TikTok e permanece aberta até o lote te
 cancelado; fechar a janela de resultados também encerra a janela TikTok. A janela de resultados
 abre em separado e sem foco inicial quando o lote inclui TikTok; só uma janela pode ter o foco
 do sistema por vez, então organize as janelas lado a lado se quiser acompanhar os resultados
-enquanto o TikTok permanece ativo. Perfis TikTok são
+enquanto o TikTok permanece ativo. O TikTok abre em janela normal de 900 × 750, com controles
+do navegador; resultados abrem em janela compacta de 1100 × 800, sem abas nem barra de endereço.
+Ambas são abertas no estado normal, não maximizadas. Perfis TikTok são
 abertos diretamente no navegador, sem classificação preliminar por fetch, e aguardam
 evidências renderizadas por até 45 segundos. A leitura retorna antes ao encontrar um cabeçalho de perfil, desafio explícito
 ou mensagem de conta não encontrada, mesmo quando a página inclui navegação/rodapé. O texto

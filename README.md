@@ -13,7 +13,9 @@ fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bio
 não pausam o lote. URLs TikTok sempre são lidas numa janela dedicada e focada, aberta no
 início do lote com a home do TikTok; a mesma aba é reutilizada apenas para URLs TikTok e a
 janela fecha ao concluir ou cancelar o lote. A janela de resultados abre separadamente e sem
-foco inicial, para manter o TikTok ativo durante a análise. Perfis podem aguardar até 45
+foco inicial, para manter o TikTok ativo durante a análise. As janelas abrem em tamanho
+compacto, sem maximização; a janela de resultados não exibe abas nem barra de endereço.
+Perfis podem aguardar até 45
 segundos pela evidência renderizada; a leitura retorna antes ao encontrar um cabeçalho de
 perfil, uma tela de desafio ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
 localizar esta conta” é interpretado como indisponibilidade do perfil, inclusive quando
