@@ -181,32 +181,6 @@ test('runBatch pausa a fila do TikTok após HTTP 429 e marca o restante do lote 
   assert.equal(pausedResults.length, urls.length - 1);
 });
 
-test('runBatch pausa a fila do TikTok após uma página de acesso negado HTTP 403', async () => {
-  const urls = [
-    'https://www.tiktok.com/@primeiro/video/123',
-    'https://www.tiktok.com/@segundo/video/456',
-  ];
-  let calls = 0;
-  const checkUrlFn = async () => {
-    calls++;
-    return {
-      status: 'indeterminado',
-      platform: 'tiktok',
-      httpStatus: 403,
-      reason: 'TikTok limitou ou desafiou a consulta (HTTP 403); a fila da plataforma será pausada',
-      confidence: 'alta',
-      tags: ['anti-bot'],
-    };
-  };
-  const { results, tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(
-    urls, {}, {}, { checkUrlFn, enrichFn: noopEnrich },
-  );
-  assert.equal(calls, 1);
-  assert.equal(results.size, urls.length);
-  assert.equal(tiktokPausedCount, urls.length - 1);
-  assert.match(tiktokQueuePauseReason, /verificação anti-bot/);
-});
-
 /* ---------- runBatch: cancelamento ---------- */
 
 test('runBatch marca URLs restantes como canceladas quando o sinal é abortado', async () => {

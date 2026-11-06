@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.66** antes de testar os recursos recentes.
+   **2.60** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -152,9 +152,7 @@ resposta. Confirme manualmente resultados importantes antes de tomar decisões.
 O TikTok pode apresentar uma página de espera ou verificação anti-bot. Ela não é considerada
 prova de que um perfil esteja ativo ou removido. Para vídeos, o Morto-Vivo usa o estado
 público renderizado na página apenas quando o identificador corresponde ao vídeo da URL;
-uma indicação explícita de remoção é tratada separadamente. Uma resposta positiva do oEmbed
-ou do player não confirma que o vídeo está ativo, pois pode continuar disponível após a
-remoção. Publicações de fotos/carrosséis
+uma indicação explícita de remoção é tratada separadamente. Publicações de fotos/carrosséis
 também podem ser reconhecidas quando o estado público inclui imagens e o ID corresponde ao
 caminho da publicação. Links curtos `vm.tiktok.com`/`vt.tiktok.com` podem usar o oEmbed e,
 se redirecionarem, o destino canônico é usado para validar o estado capturado. Respostas de
@@ -186,17 +184,6 @@ declarar a conta indisponível. O limite de 45 segundos é da espera pelo DOM/ev
 altera o timeout global da análise. Se o prazo terminar sem evidência suficiente, o resultado
 fica indeterminado. Se a leitura da aba falhar, o resultado também fica indeterminado.
 Vídeos e outras URLs seguem consultando o fetch/oEmbed antes de usar a aba quando necessário.
-Quando a aba é necessária, vídeos e fotos do TikTok aguardam até 20 segundos pelo estado
-público correspondente ao ID, retornando antes ao encontrá-lo como disponível ou removido.
-O lote reutiliza a mesma aba e não abre uma aba por vídeo; esse limite não altera o timeout
-geral da análise.
-Quando a aba for necessária para ler um vídeo ou foto TikTok, a aba reutilizada é ativada
-desde o início da navegação para permitir que a página renderize em primeiro plano. Ao
-terminar, a extensão tenta restaurar a aba que estava ativa antes; a mudança de foco pode
-ser percebida durante a verificação. Isso só ocorre quando **Modo aba** está ativo e a
-leitura por fetch não é conclusiva.
-Nos detalhes do resultado, o campo **TikTok oEmbed** mostra o status HTTP e os sinais de tipo
-e ID recebidos pela extensão, ajudando a diagnosticar respostas que não confirmaram o vídeo.
 Isso reduz aberturas simultâneas, mas não contorna
 limites ou verificações da plataforma; a extensão não troca
 cookies, IP nem identidade e não ativa navegação anônima.

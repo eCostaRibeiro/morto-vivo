@@ -5,23 +5,6 @@ import { checkUrl } from '../lib/analyzer.js';
 import { classifyPage } from '../lib/classification.js';
 import { detectPlatform } from '../lib/rules.js';
 
-function tiktokVideoStateHtml(id, statusCode = 0, statusMsg = '') {
-  const videoDetail = statusCode === 0
-    ? {
-      statusCode,
-      itemInfo: {
-        itemStruct: {
-          id,
-          desc: 'Public video',
-          author: { uniqueId: 'creator', nickname: 'Creator' },
-        },
-      },
-    }
-    : { statusCode, statusMsg };
-  const state = { __DEFAULT_SCOPE__: { 'webapp.video-detail': videoDetail } };
-  return `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify(state)}</script>`;
-}
-
 test('detects Meta Ad Library links separately from Facebook profiles', () => {
   const ad = detectPlatform(new URL('https://www.facebook.com/ads/library/?id=1840012267195550'));
   const profile = detectPlatform(new URL('https://www.facebook.com/example.page'));
@@ -262,7 +245,7 @@ test('detects Bluesky platform for bsky.app URLs', () => {
   assert.equal(p?.name, 'Bluesky');
 });
 
-test('records the TikTok oEmbed response but does not treat a mismatched ID as conclusive', async () => {
+test('validates TikTok videos through oEmbed only when the returned ID matches', async () => {
   const url = 'https://www.tiktok.com/@creator/video/123456789';
   const calls = [];
   const result = await checkUrl(url, {
@@ -287,114 +270,28 @@ test('records the TikTok oEmbed response but does not treat a mismatched ID as c
   assert.equal(result.status, 'indeterminado');
   assert.equal(result.via, 'fetch');
   assert.equal(calls.length, 2);
-  assert.equal(result.info.tiktokOembed, 'HTTP 200; tipo video; ID 999999999');
 });
 
-test('confirms a TikTok video from matching public state after oEmbed', async () => {
+test('accepts a TikTok video oEmbed response with the matching video ID', async () => {
   const url = 'https://www.tiktok.com/@creator/video/123456789';
-  const calls = [];
   const result = await checkUrl(url, {
     doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
     fetchFn: async (requestUrl) => {
-      calls.push(requestUrl);
-      if (requestUrl.includes('/oembed?')) {
-        return new Response(JSON.stringify({
-          type: 'video',
-          embed_product_id: '123456789',
-          title: 'Public video',
-          author_name: 'Creator',
-        }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      return new Response(tiktokVideoStateHtml('123456789'), {
-        status: 200,
-        headers: { 'content-type': 'text/html' },
-      });
+      assert.match(requestUrl, /\/oembed\?/);
+      return new Response(JSON.stringify({
+        type: 'video',
+        embed_product_id: '123456789',
+        title: 'Public video',
+        author_name: 'Creator',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
     },
     opts: { tabMode: false },
   });
 
   assert.equal(result.status, 'vivo');
-  assert.equal(result.reason, 'Vídeo público encontrado no TikTok');
-  assert.equal(result.via, 'fetch');
-  assert.equal(calls.length, 2);
-});
-
-test('does not trust a successful TikTok oEmbed for a deleted video', async () => {
-  const url = 'https://www.tiktok.com/@gaelymarianajeans/video/7683333996268309767';
-  const calls = [];
-  const result = await checkUrl(url, {
-    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
-    fetchFn: async (requestUrl) => {
-      calls.push(requestUrl);
-      if (requestUrl.includes('/oembed?')) {
-        return new Response(JSON.stringify({
-          type: 'video',
-          embed_type: 'video',
-          embed_product_id: '7683333996268309767',
-          html: '<iframe src="https://www.tiktok.com/player/v1/7683333996268309767"></iframe>',
-        }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      return new Response(tiktokVideoStateHtml('7683333996268309767', 10204, 'status_deleted'), {
-        status: 200,
-        headers: { 'content-type': 'text/html' },
-      });
-    },
-    opts: { tabMode: false },
-  });
-
-  assert.equal(result.status, 'morto');
-  assert.equal(result.reason, 'Vídeo removido segundo o estado público do TikTok');
-  assert.equal(result.via, 'fetch');
-  assert.equal(calls.length, 2);
-});
-
-test('does not classify a TikTok video as alive from embed_type alone', async () => {
-  const url = 'https://www.tiktok.com/@creator/video/123456789';
-  let pageFetched = false;
-  const result = await checkUrl(url, {
-    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
-    fetchFn: async (requestUrl) => {
-      if (requestUrl.includes('/oembed?')) {
-        return new Response(JSON.stringify({
-          embed_type: 'video',
-          embed_product_id: '123456789',
-        }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      pageFetched = true;
-      return new Response('<title>TikTok</title><p>Page shell</p>', {
-        status: 200,
-        headers: { 'content-type': 'text/html' },
-      });
-    },
-    opts: { tabMode: false },
-  });
-
-  assert.equal(pageFetched, true);
-  assert.equal(result.status, 'indeterminado');
-  assert.equal(result.via, 'fetch');
-});
-
-test('does not classify a TikTok video as alive from the player URL alone', async () => {
-  const url = 'https://www.tiktok.com/@creator/video/123456789';
-  const result = await checkUrl(url, {
-    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
-    fetchFn: async (requestUrl) => {
-      if (requestUrl.includes('/oembed?')) {
-        return new Response(JSON.stringify({
-          type: 'video',
-          html: '<iframe src="https://www.tiktok.com/player/v1/123456789?embed_from=oembed"></iframe>',
-        }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      return new Response('<title>TikTok</title><p>Page shell</p>', {
-        status: 200,
-        headers: { 'content-type': 'text/html' },
-      });
-    },
-    opts: { tabMode: false },
-  });
-
-  assert.equal(result.status, 'indeterminado');
-  assert.equal(result.via, 'fetch');
+  assert.equal(result.reason, 'Vídeo disponível (oEmbed)');
+  assert.equal(result.via, 'api');
+  assert.equal(result.title, 'Public video');
 });
 
 test('does not treat a TikTok oEmbed 404 as conclusive removal', async () => {

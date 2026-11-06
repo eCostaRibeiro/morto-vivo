@@ -42,10 +42,7 @@ test('missing stored values still use empty history and default settings', async
   }, async () => {
     assert.deepEqual(await loadHistory(), {});
     assert.deepEqual(await loadSettings(), {
-      tabMode: false,
-      completionNotification: false,
-      markCheckedUrls: false,
-      customRules: [],
+      tabMode: false, completionNotification: false, markCheckedUrls: false, customRules: [],
     });
   });
 });
@@ -93,7 +90,6 @@ test('keeps manual presentation overrides out of automatic status history', () =
 test('ignores and removes legacy settings', async () => {
   let storedSettings = {
     tabMode: true,
-    tiktokForegroundFallback: false,
     completionNotification: true,
     screenshots: true,
     safeShots: false,
@@ -105,17 +101,11 @@ test('ignores and removes legacy settings', async () => {
     remove: async () => {},
   }, async () => {
     assert.deepEqual(await loadSettings(), {
-      tabMode: true,
-      completionNotification: true,
-      markCheckedUrls: false,
-      customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
     });
     await saveSettings(await loadSettings());
     assert.deepEqual(storedSettings, {
-      tabMode: true,
-      completionNotification: true,
-      markCheckedUrls: false,
-      customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
     });
   });
 });
