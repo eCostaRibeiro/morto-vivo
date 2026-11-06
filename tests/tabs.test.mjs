@@ -929,8 +929,8 @@ test('dedicated TikTok session opens home in a focused window and keeps its tab 
         assert.deepEqual(options, {
           url: 'about:blank',
           type: 'normal',
-          width: 900,
-          height: 750,
+          width: 500,
+          height: 400,
           state: 'normal',
           focused: true,
         });
