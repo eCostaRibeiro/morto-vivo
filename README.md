@@ -2,16 +2,20 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.60**, definida em `manifest.json`.
+extensão é **2.62**, definida em `manifest.json`.
 
 Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
-quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
+quando há estado público correspondente, valida o ID retornado pelo oEmbed ou pelo player
+incorporado e mostra nos detalhes o diagnóstico da resposta oEmbed. Não trata
 respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
 evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
 fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bios e legendas
-não pausam o lote. No modo aba, perfis TikTok podem aguardar até 45 segundos pela evidência
-renderizada; a leitura retorna antes ao encontrar um cabeçalho de perfil, uma tela de desafio
+não pausam o lote. No modo aba, perfis TikTok podem aguardar até 45 segundos e vídeos/fotos
+até 20 segundos pela evidência renderizada; a leitura retorna antes ao encontrar evidência
+conclusiva.
+Nos vídeos, essa espera extra acontece apenas se fetch/oEmbed não for conclusivo. Perfis
+retornam antes ao encontrar um cabeçalho de perfil, uma tela de desafio
 ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
 localizar esta conta” é interpretado como indisponibilidade do perfil, inclusive quando
 aparece no cabeçalho ou depois da navegação da página. Anúncios da Shopee com indicação de

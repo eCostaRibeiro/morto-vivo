@@ -270,6 +270,7 @@ test('validates TikTok videos through oEmbed only when the returned ID matches',
   assert.equal(result.status, 'indeterminado');
   assert.equal(result.via, 'fetch');
   assert.equal(calls.length, 2);
+  assert.equal(result.info.tiktokOembed, 'HTTP 200; tipo video; ID 999999999');
 });
 
 test('accepts a TikTok video oEmbed response with the matching video ID', async () => {
@@ -292,6 +293,44 @@ test('accepts a TikTok video oEmbed response with the matching video ID', async 
   assert.equal(result.reason, 'Vídeo disponível (oEmbed)');
   assert.equal(result.via, 'api');
   assert.equal(result.title, 'Public video');
+});
+
+test('accepts TikTok oEmbed responses using embed_type', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      assert.match(requestUrl, /\/oembed\?/);
+      return new Response(JSON.stringify({
+        embed_type: 'video',
+        embed_product_id: '123456789',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Vídeo disponível (oEmbed)');
+  assert.equal(result.via, 'api');
+});
+
+test('accepts TikTok oEmbed responses whose matching video ID is in the player URL', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['104.244.42.1'] }),
+    fetchFn: async (requestUrl) => {
+      assert.match(requestUrl, /\/oembed\?/);
+      return new Response(JSON.stringify({
+        type: 'video',
+        html: '<iframe src="https://www.tiktok.com/player/v1/123456789?embed_from=oembed"></iframe>',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+    opts: { tabMode: false },
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Vídeo disponível (oEmbed)');
+  assert.equal(result.via, 'api');
 });
 
 test('does not treat a TikTok oEmbed 404 as conclusive removal', async () => {

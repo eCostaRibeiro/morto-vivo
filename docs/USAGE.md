@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.60** antes de testar os recursos recentes.
+   **2.62** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -184,6 +184,10 @@ declarar a conta indisponível. O limite de 45 segundos é da espera pelo DOM/ev
 altera o timeout global da análise. Se o prazo terminar sem evidência suficiente, o resultado
 fica indeterminado. Se a leitura da aba falhar, o resultado também fica indeterminado.
 Vídeos e outras URLs seguem consultando o fetch/oEmbed antes de usar a aba quando necessário.
+Quando a aba é necessária, vídeos e fotos do TikTok aguardam até 20 segundos por conteúdo
+renderizado antes de classificar; esse limite não altera o timeout geral da análise.
+Nos detalhes do resultado, o campo **TikTok oEmbed** mostra o status HTTP e os sinais de tipo
+e ID recebidos pela extensão, ajudando a diagnosticar respostas que não confirmaram o vídeo.
 Isso reduz aberturas simultâneas, mas não contorna
 limites ou verificações da plataforma; a extensão não troca
 cookies, IP nem identidade e não ativa navegação anônima.

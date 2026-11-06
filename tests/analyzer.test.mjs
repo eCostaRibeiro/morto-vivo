@@ -1409,7 +1409,7 @@ test('uses the slower reusable tab flow for TikTok video fallback', async () => 
   });
   assert.equal(result.via, 'tab');
   assert.equal(tabOptions.waitForTikTokProfile, undefined);
-  assert.equal(tabOptions.settle, 8000);
+  assert.equal(tabOptions.settle, 20000);
   assert.equal(tabOptions.reuseTab, true);
 });
 
