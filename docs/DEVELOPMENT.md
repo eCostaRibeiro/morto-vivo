@@ -51,7 +51,8 @@ manual no Chrome/Vivaldi.
   valor aqui em vez de procurar o número em cada arquivo.
 - `lib/resultsView.js`: renderização dos resultados em blocos de até 50 por categoria,
   filtros, seleção e ações da interface.
-- `background.js`: criação das notificações por solicitação da interface.
+- `background.js`: criação das notificações e encerramento da janela TikTok dedicada quando a
+  janela de resultados que a iniciou é fechada.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação pura das evidências coletadas, incluindo regras
   contextuais para Facebook/Meta e estados públicos de perfis/conteúdos TikTok.
@@ -64,7 +65,10 @@ manual no Chrome/Vivaldi.
   publicações de fotos do TikTok pelo ID e pelo destino canônico.
 - `lib/tiktokQueue.js`: serializa as verificações do TikTok, aplica intervalo entre URLs e
   pausa a fila da plataforma após HTTP 429 ou desafio explícito, sem interromper outros hosts.
-- `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba. Perfis
+- `lib/tabs.js`: ciclo de vida das abas temporárias e da janela TikTok dedicada, além do guard
+  de requisições. A sessão TikTok começa com `tiktok.com`, mantém uma aba exclusiva para o
+  lote e fecha a janela ao concluir/cancelar; `background.js` a encerra também se a janela de
+  resultados for fechada. Perfis
   TikTok aguardam o DOM por até 45 segundos, mas retornam antes ao reconhecer cabeçalho de
   perfil, desafio ou mensagem explícita de conta não encontrada. Páginas Facebook aguardam
   até 8 segundos por conteúdo renderizado, sem converter indisponibilidade ambígua em remoção.
@@ -91,8 +95,8 @@ manual no Chrome/Vivaldi.
    a página de resultados por até 24 horas.
 2. A página de resultados executa até seis verificações concorrentes, com limites adicionais
    por plataforma/host.
-3. Cada URL passa pela coordenação em `lib/analyzer.js`; perfis TikTok com Modo aba ativo
-   seguem diretamente para a aba reutilizada. A prontidão reconhece cabeçalhos genéricos de
+3. Cada URL passa pela coordenação em `lib/analyzer.js`; URLs TikTok numa sessão de lote
+   seguem diretamente para a aba dedicada. A prontidão reconhece cabeçalhos genéricos de
    navegação em português e mensagens de conta não encontrada no DOM, inclusive quando há
    texto adicional ao redor. O classificador não deve confundir o texto de bio com esse aviso
    quando existe um cabeçalho real de perfil. Evidências adicionais como favicon são

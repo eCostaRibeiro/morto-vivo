@@ -1,4 +1,84 @@
+const TIKTOK_SESSION_KEY_PREFIX = 'mv_tiktok_session_owner_';
+
+function isResultsPage(sender) {
+  return sender.id === chrome.runtime.id
+    && typeof sender.url === 'string'
+    && sender.url.split('?')[0] === chrome.runtime.getURL('results.html');
+}
+
+async function updateTikTokSessionOwnership(message) {
+  const { ownerWindowId, tiktokWindowId } = message;
+  if (!Number.isInteger(ownerWindowId) || !Number.isInteger(tiktokWindowId)) {
+    throw new Error('IDs de janela inválidos para a sessão TikTok.');
+  }
+  const key = `${TIKTOK_SESSION_KEY_PREFIX}${ownerWindowId}`;
+  if (message.type === 'mv.registerTikTokWindow') {
+    await chrome.windows.get(ownerWindowId);
+    await chrome.storage.session.set({ [key]: tiktokWindowId });
+    try {
+      await chrome.windows.get(ownerWindowId);
+    } catch (error) {
+      try {
+        await chrome.storage.session.remove(key);
+      } catch (cleanupError) {
+        console.error('Não foi possível limpar o registro da sessão TikTok sem janela de resultados:', cleanupError);
+      }
+      try {
+        await chrome.windows.remove(tiktokWindowId);
+      } catch (cleanupError) {
+        if (!/no window with id/i.test(String((cleanupError && cleanupError.message) || cleanupError))) {
+          console.error('Não foi possível fechar a janela TikTok sem janela de resultados:', cleanupError);
+        }
+      }
+      throw new Error('A janela de resultados foi fechada antes do início da sessão TikTok.');
+    }
+  } else {
+    await chrome.storage.session.remove(key);
+  }
+}
+
+async function cleanTikTokSessionOwnership(removedWindowId) {
+  const sessions = await chrome.storage.session.get(null);
+  const removedKeys = [];
+  const windowsToClose = [];
+  for (const [key, tiktokWindowId] of Object.entries(sessions)) {
+    if (!key.startsWith(TIKTOK_SESSION_KEY_PREFIX)) continue;
+    const ownerWindowId = Number(key.slice(TIKTOK_SESSION_KEY_PREFIX.length));
+    if (ownerWindowId === removedWindowId) {
+      removedKeys.push(key);
+      if (Number.isInteger(tiktokWindowId) && tiktokWindowId !== removedWindowId) {
+        windowsToClose.push(tiktokWindowId);
+      }
+    } else if (tiktokWindowId === removedWindowId) {
+      removedKeys.push(key);
+    }
+  }
+  if (removedKeys.length) await chrome.storage.session.remove(removedKeys);
+  await Promise.all(windowsToClose.map(async (windowId) => {
+    try {
+      await chrome.windows.remove(windowId);
+    } catch (error) {
+      if (!/no window with id/i.test(String((error && error.message) || error))) throw error;
+    }
+  }));
+}
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  cleanTikTokSessionOwnership(windowId)
+    .catch((error) => console.error('Não foi possível encerrar a janela TikTok vinculada:', error));
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (isResultsPage(sender)
+      && ['mv.registerTikTokWindow', 'mv.releaseTikTokWindow'].includes(message?.type)) {
+    updateTikTokSessionOwnership(message)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({
+        ok: false,
+        error: String((error && error.message) || error),
+      }));
+    return true;
+  }
   if (sender.id !== chrome.runtime.id || message?.type !== 'mv.createNotification') return;
 
   // A permissão é conferida no momento do uso, não apenas quando a opção foi ativada.

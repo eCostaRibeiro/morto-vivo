@@ -14,7 +14,7 @@ description: Arquitetura, recursos, segurança e limites da extensão Morto-Vivo
 # Morto-Vivo
 ## Análise técnica de URLs, anúncios e perfis
 
-**Extensão para Chrome e Vivaldi · versão 2.60**
+**Extensão para Chrome e Vivaldi · versão 2.68**
 
 <!-- NOTAS: Apresentar como ferramenta de triagem baseada em evidências, não como veredito automático. -->
 
@@ -164,7 +164,7 @@ popup.js ──> results.html / results.js ──> runChecks (workers + filas)
 background.js ──> notificações (mensagens da extensão)
 ```
 
-- **Interface:** `popup.js` valida a entrada e abre a tela de resultados; `resultsView.js` renderiza e encaminha ações.
+- **Interface:** `popup.js` valida a entrada e abre a tela de resultados numa janela separada; `resultsView.js` renderiza e encaminha ações.
 - **Orquestração:** `results.js` controla cancelamento, estado do lote, concorrência, fila TikTok, histórico e enriquecimento.
 - **Análise:** `analyzer.js` escolhe probe, HTTP ou modo aba e reúne o registro da URL.
 - **Política:** `rules.js` mantém padrões/plataformas; `classification.js` é uma função pura que interpreta evidências.
@@ -183,7 +183,7 @@ background.js ──> notificações (mensagens da extensão)
 1. **Identificação:** `detectPlatform` determina plataforma e tipo de recurso pela URL.
 2. **Probe opcional:** API pública/oEmbed pode resolver certos recursos antes da página HTML.
 3. **Leitura de rede:** `fetchPage` usa GET sem cookies; redirects são manuais, validados salto a salto e limitados. Fallback HTTP genérico reduz a confiança.
-4. **Fallback de navegador:** aplicado conforme plataforma/opções ou quando uma evidência fetch não basta; TikTok perfil com Modo aba ativo segue diretamente para a aba.
+4. **Leitura de navegador:** aplicada conforme plataforma/opções; todos os endereços TikTok usam uma aba dedicada na janela TikTok da sessão, sem fetch preliminar.
 5. **Interpretação:** `classifyPage` combina HTTP, metadados, texto, DOM, rota, destino final e regras da plataforma.
 6. **Registro:** o resultado mantém motivo, confiança, tags, via e metadados disponíveis; coleta de favicon não muda o status.
 
@@ -262,7 +262,8 @@ Histórico e classificação manual são mantidos separadamente da evidência au
 # TikTok: perfis e publicações
 
 ### Perfis
-- Com **Modo aba** ativo, perfis `/@usuario` são abertos diretamente em uma aba reutilizada.
+- Todo lote com URLs TikTok abre uma janela dedicada e focada, inicialmente em `tiktok.com`; a mesma aba é usada exclusivamente para URLs TikTok e a janela fecha ao terminar/cancelar.
+- A janela de resultados é aberta separadamente e sem foco inicial nos lotes com TikTok; uma janela de cada vez pode receber foco.
 - A leitura aguarda evidências renderizadas por até 45 segundos e retorna antes ao encontrar cabeçalho de perfil, desafio ou mensagem explícita de conta não encontrada.
 - Sem evidência suficiente no prazo, o perfil permanece indeterminado.
 - Frases em bio/legenda não devem ser confundidas com desafio anti-bot.
@@ -323,7 +324,7 @@ Sinais fortes de parking/venda são apresentados separadamente de takedown. Men�
 
 # Modo aba: conteúdo renderizado, com limites
 
-- Lê o DOM de páginas JavaScript usando uma aba em segundo plano; TikTok pode reutilizar a mesma aba.
+- Lê o DOM de páginas JavaScript usando abas em segundo plano; TikTok usa uma janela e uma aba dedicadas, focadas durante o lote.
 - O guard valida navegações principais e requisições **XHR/Fetch**.
 - Destinos privados/reservados são bloqueados antes de permitir essas requisições.
 - Abas-filhas são fechadas e downloads são negados quando o comando do navegador está disponível.

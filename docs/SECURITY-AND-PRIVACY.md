@@ -46,7 +46,8 @@ isolado do navegador.
 
 A verificação do TikTok é serializada e pausada para o restante do lote quando detecta HTTP
 429 ou um desafio explícito de verificação; um resultado indeterminado genérico não pausa a
-fila. O modo aba reutiliza uma aba em segundo plano quando necessário;
+fila. Cada lote com URLs TikTok abre uma janela dedicada e focada, usa uma única aba
+exclusivamente para esses endereços e fecha a janela ao terminar o lote;
 não usa navegação anônima nem tenta contornar controles, limites, cookies ou identidade da
 plataforma. Para perfis, a captura aguarda evidências renderizadas por até 45 segundos,
 retornando antes ao encontrar um cabeçalho de perfil, desafio ou a mensagem de conta não

@@ -3,7 +3,9 @@
 // este arquivo só amarra esse motor ao estado da página e aos elementos da UI.
 import { makeDoh } from './lib/dns.js';
 import { defang } from './lib/normalize.js';
-import { closeReusableTab, readInTab } from './lib/tabs.js';
+import {
+  closeReusableTab, closeTikTokSession, openTikTokSession, readInTab,
+} from './lib/tabs.js';
 import {
   loadHistory, applyHistory, saveHistory, loadManualClassifications, saveManualClassifications,
   loadSettings, DEFAULT_SETTINGS,
@@ -20,6 +22,7 @@ import {
 import { FETCH_PAGE_TIMEOUT_MS } from './lib/config.js';
 import { runBatch } from './lib/batchRunner.js';
 import { addQueryHistory } from './lib/queryHistory.js';
+import { detectPlatform } from './lib/rules.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
@@ -142,6 +145,7 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     signal: state.abort.signal,
     opts: {
       tabMode,
+      tiktokDedicatedSession: false,
       timeoutMs: FETCH_PAGE_TIMEOUT_MS,
       customRules: state.settings.customRules.map((rule) => ({
         ...rule,
@@ -149,19 +153,47 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
       })),
     },
   };
+  const hasTikTok = urls.some((url) => detectPlatform(new URL(url))?.id === 'tiktok');
+  if (hasTikTok) {
+    ctx.opts.tiktokDedicatedSession = true;
+    try {
+      await openTikTokSession(ctx.doh, { signal: state.abort.signal });
+      ctx.opts.tiktokSessionReady = true;
+    } catch (error) {
+      ctx.opts.tiktokSessionReady = false;
+      showStorageWarning(
+        `Não foi possível iniciar a aba TikTok dedicada; URLs TikTok permanecerão indeterminadas. `
+        + `Detalhe: ${(error && error.message) || error}`,
+      );
+    }
+  }
   // A concorrência global, os semáforos por host/plataforma e a fila do TikTok vivem em
   // runBatch (lib/batchRunner.js); aqui só ligamos os hooks dela ao estado/DOM da página.
-  const { tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(urls, ctx, hist, {
-    onActiveChange: (delta) => { state.active += delta; },
-    onDone: () => { state.done++; },
-    onResult: (url, res) => { state.results.set(url, res); },
-    onProgress: () => setProgress(),
-    onRender: () => scheduleRender(),
-    applyManualClassification,
-    applyHistory,
-  });
-  clearInterval(progressTimer);
-  await closeReusableTab();
+  let batchResult;
+  try {
+    batchResult = await runBatch(urls, ctx, hist, {
+      onActiveChange: (delta) => { state.active += delta; },
+      onDone: () => { state.done++; },
+      onResult: (url, res) => { state.results.set(url, res); },
+      onProgress: () => setProgress(),
+      onRender: () => scheduleRender(),
+      applyManualClassification,
+      applyHistory,
+    });
+  } finally {
+    clearInterval(progressTimer);
+    try {
+      await closeReusableTab();
+    } catch (error) {
+      showStorageWarning(`Não foi possível liberar a aba temporária: ${(error && error.message) || error}`);
+    }
+    try {
+      await closeTikTokSession();
+    } catch (error) {
+      showStorageWarning(`Não foi possível encerrar a janela TikTok: ${(error && error.message) || error}`);
+    }
+  }
+  const { tiktokPausedCount, tiktokQueuePauseReason } = batchResult;
   try {
     await saveHistory(hist);
   } catch (err) {
@@ -385,7 +417,7 @@ $('btnRecheck').addEventListener('click', async () => {
   const urls = all().filter((r) => r.status === 'indeterminado').map((r) => r.url);
   let tabMode = state.settings.tabMode;
   if (!tabMode) {
-    tabMode = confirm('Reverificar usando o MODO ABA?\n\nAbre as páginas de plataformas conhecidas (Shopee, Instagram, Facebook, X, TikTok…) em abas em segundo plano usando a sua sessão logada. Use um perfil de Chrome dedicado à investigação.');
+    tabMode = confirm('Reverificar usando o MODO ABA?\n\nAbre páginas de outras plataformas em abas em segundo plano usando a sua sessão logada. O TikTok sempre usa uma janela dedicada e ativa durante a verificação. Use um perfil de navegador dedicado à investigação.');
   }
   await runChecks(urls, { tabMode });
 });

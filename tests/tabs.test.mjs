@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { closeReusableTab, readInTab } from '../lib/tabs.js';
+import {
+  closeReusableTab, closeTikTokSession, openTikTokSession, readInTab,
+} from '../lib/tabs.js';
 
 test('readInTab installs the debugger network guard and blocks private destinations', async () => {
   const originalChrome = globalThis.chrome;
@@ -906,5 +908,125 @@ test('readInTab releases the tab semaphore after cancellation closes the guarded
       if (originalChrome === undefined) delete globalThis.chrome;
       else globalThis.chrome = originalChrome;
     }
+  }
+});
+
+test('dedicated TikTok session opens home in a focused window and keeps its tab until session close', async () => {
+  const originalChrome = globalThis.chrome;
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  const navigations = [];
+  const removedWindows = [];
+  const removedTabs = [];
+  const sessionMessages = [];
+  let pageUrl = 'about:blank';
+  let debuggerAttached = false;
+
+  globalThis.chrome = {
+    windows: {
+      getCurrent: async () => ({ id: 41 }),
+      create: async (options) => {
+        assert.deepEqual(options, { url: 'about:blank', type: 'normal', focused: true });
+        return { id: 51 };
+      },
+      remove: async (windowId) => { removedWindows.push(windowId); },
+    },
+    runtime: {
+      sendMessage: async (message) => {
+        sessionMessages.push(message);
+        return { ok: true };
+      },
+    },
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      query: async ({ active, windowId }) => {
+        assert.equal(active, true);
+        assert.equal(windowId, 51);
+        return [{ id: 52, windowId, url: pageUrl }];
+      },
+      create: async () => { throw new Error('Dedicated session must not create another tab'); },
+      update: async (tabId, update) => {
+        assert.equal(tabId, 52);
+        pageUrl = update.url;
+        navigations.push(update.url);
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, windowId: 51, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, windowId: 51, url: pageUrl }),
+      remove: async (tabId) => { removedTabs.push(tabId); },
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async ({ tabId }) => {
+        assert.equal(tabId, 52);
+        debuggerAttached = true;
+      },
+      sendCommand: async ({ tabId }, method) => {
+        assert.equal(tabId, 52);
+        assert.equal(debuggerAttached, true);
+        if (method === 'Fetch.disable') return;
+      },
+      detach: async () => { debuggerAttached = false; },
+    },
+    scripting: {
+      executeScript: async ({ target }) => {
+        assert.equal(target.tabId, 52);
+        return [{ result: {
+          url: pageUrl,
+          html: '<title>TikTok</title>',
+          text: 'TikTok profile',
+          hasPassword: false,
+        } }];
+      },
+    },
+  };
+
+  try {
+    const session = await openTikTokSession(
+      async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      { commandTimeout: 100, timeout: 100 },
+    );
+    assert.deepEqual(session, { windowId: 51, tabId: 52 });
+    assert.deepEqual(sessionMessages, [{
+      type: 'mv.registerTikTokWindow',
+      ownerWindowId: 41,
+      tiktokWindowId: 51,
+    }]);
+    const result = await readInTab('https://www.tiktok.com/@creator', {
+      useTikTokSession: true,
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      settle: 0,
+      timeout: 100,
+      commandTimeout: 100,
+    });
+
+    assert.equal(result.url, 'https://www.tiktok.com/@creator');
+    assert.deepEqual(navigations, [
+      'https://www.tiktok.com/',
+      'https://www.tiktok.com/@creator',
+    ]);
+    assert.deepEqual(removedTabs, []);
+    assert.deepEqual(removedWindows, []);
+
+    await closeTikTokSession();
+    assert.deepEqual(removedWindows, [51]);
+    assert.deepEqual(removedTabs, []);
+    assert.deepEqual(sessionMessages[1], {
+      type: 'mv.releaseTikTokWindow',
+      ownerWindowId: 41,
+      tiktokWindowId: 51,
+    });
+    assert.equal(debuggerAttached, false);
+  } finally {
+    await closeTikTokSession();
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
   }
 });

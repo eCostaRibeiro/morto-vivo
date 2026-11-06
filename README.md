@@ -2,7 +2,7 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.60**, definida em `manifest.json`.
+extensão é **2.68**, definida em `manifest.json`.
 
 Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
 quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
@@ -10,9 +10,12 @@ respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos 
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
 evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
 fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bios e legendas
-não pausam o lote. No modo aba, perfis TikTok podem aguardar até 45 segundos pela evidência
-renderizada; a leitura retorna antes ao encontrar um cabeçalho de perfil, uma tela de desafio
-ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
+não pausam o lote. URLs TikTok sempre são lidas numa janela dedicada e focada, aberta no
+início do lote com a home do TikTok; a mesma aba é reutilizada apenas para URLs TikTok e a
+janela fecha ao concluir ou cancelar o lote. A janela de resultados abre separadamente e sem
+foco inicial, para manter o TikTok ativo durante a análise. Perfis podem aguardar até 45
+segundos pela evidência renderizada; a leitura retorna antes ao encontrar um cabeçalho de
+perfil, uma tela de desafio ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
 localizar esta conta” é interpretado como indisponibilidade do perfil, inclusive quando
 aparece no cabeçalho ou depois da navegação da página. Anúncios da Shopee com indicação de
 estoque esgotado são classificados como mortos quando essa evidência aparece na página ou

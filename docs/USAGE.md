@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.60** antes de testar os recursos recentes.
+   **2.68** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -171,11 +171,15 @@ As verificações do TikTok são serializadas, com intervalo entre consultas. Se
 indicar limite HTTP 429 ou um desafio explícito de verificação, o restante das URLs do TikTok
 no lote é marcado como indeterminado e não é consultado; sinais genéricos de classificação
 indeterminada não pausam a fila. URLs de outras plataformas continuam normalmente.
-Quando o **Modo aba** estiver ativo e a leitura em navegador for necessária, as páginas do
-TikTok usam uma aba em segundo plano reutilizada durante o lote; a
-extensão usa o fluxo de verificação mais conservador. Perfis TikTok são abertos diretamente
-no navegador, sem classificação preliminar por fetch, e aguardam evidências renderizadas por
-até 45 segundos. A leitura retorna antes ao encontrar um cabeçalho de perfil, desafio explícito
+URLs TikTok sempre usam uma janela separada e uma aba dedicada, independentemente da opção
+**Modo aba**. A janela é aberta no início do lote, focada e inicialmente em `tiktok.com`;
+essa aba navega apenas entre endereços TikTok e permanece aberta até o lote terminar ou ser
+cancelado; fechar a janela de resultados também encerra a janela TikTok. A janela de resultados
+abre em separado e sem foco inicial quando o lote inclui TikTok; só uma janela pode ter o foco
+do sistema por vez, então organize as janelas lado a lado se quiser acompanhar os resultados
+enquanto o TikTok permanece ativo. Perfis TikTok são
+abertos diretamente no navegador, sem classificação preliminar por fetch, e aguardam
+evidências renderizadas por até 45 segundos. A leitura retorna antes ao encontrar um cabeçalho de perfil, desafio explícito
 ou mensagem de conta não encontrada, mesmo quando a página inclui navegação/rodapé. O texto
 “Não foi possível localizar esta conta” é tratado como evidência mesmo se estiver no cabeçalho
 principal; cabeçalhos de navegação como “Para você” não são interpretados como nome de perfil.
@@ -183,7 +187,7 @@ Quando existe um cabeçalho real de perfil, frases iguais dentro da bio não sã
 declarar a conta indisponível. O limite de 45 segundos é da espera pelo DOM/evidências, não
 altera o timeout global da análise. Se o prazo terminar sem evidência suficiente, o resultado
 fica indeterminado. Se a leitura da aba falhar, o resultado também fica indeterminado.
-Vídeos e outras URLs seguem consultando o fetch/oEmbed antes de usar a aba quando necessário.
+Vídeos e publicações também são lidos nessa aba dedicada, sem consultar fetch/oEmbed primeiro.
 Isso reduz aberturas simultâneas, mas não contorna
 limites ou verificações da plataforma; a extensão não troca
 cookies, IP nem identidade e não ativa navegação anônima.

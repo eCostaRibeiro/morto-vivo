@@ -1390,6 +1390,100 @@ test('uses a rendered TikTok profile heading to classify and title the profile',
   assert.equal(tabOptions.reuseTab, true);
 });
 
+test('requires the dedicated TikTok session regardless of the general tab-mode setting', async () => {
+  const url = 'https://www.tiktok.com/@creator';
+  let fetchCalls = 0;
+  let tabOptions;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response('<title>TikTok</title>', { status: 200 });
+    },
+    readTab: async (_url, options) => {
+      tabOptions = options;
+      return {
+        url,
+        heading: 'Creator',
+        html: '<title>TikTok</title>',
+        text: 'Creator profile and public videos',
+        hasPassword: false,
+      };
+    },
+    opts: {
+      tabMode: false,
+      tiktokDedicatedSession: true,
+      tiktokSessionReady: true,
+      timeoutMs: 50,
+    },
+  });
+
+  assert.equal(fetchCalls, 0);
+  assert.equal(result.via, 'tab');
+  assert.equal(result.status, 'vivo');
+  assert.equal(tabOptions.useTikTokSession, true);
+  assert.equal(tabOptions.waitForTikTokProfile, true);
+});
+
+test('does not fall back to fetch when the required TikTok session could not open', async () => {
+  let fetchCalls = 0;
+  const result = await checkUrl('https://www.tiktok.com/@creator', {
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response('<title>TikTok</title>', { status: 200 });
+    },
+    opts: {
+      tabMode: false,
+      tiktokDedicatedSession: true,
+      tiktokSessionReady: false,
+      timeoutMs: 50,
+    },
+  });
+  assert.equal(fetchCalls, 0);
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /sessão de aba dedicada do TikTok/);
+});
+
+test('reads TikTok videos in the dedicated session before any oEmbed or fetch request', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const state = {
+    __DEFAULT_SCOPE__: {
+      'webapp.video-detail': { statusCode: 10204, statusMsg: 'status_deleted' },
+    },
+  };
+  let fetchCalls = 0;
+  let tabOptions;
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response('', { status: 200 });
+    },
+    readTab: async (_url, options) => {
+      tabOptions = options;
+      return {
+        url,
+        html: `<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">${JSON.stringify(state)}</script>`,
+        text: 'Video unavailable',
+        hasPassword: false,
+      };
+    },
+    opts: {
+      tabMode: false,
+      tiktokDedicatedSession: true,
+      tiktokSessionReady: true,
+      timeoutMs: 50,
+    },
+  });
+
+  assert.equal(fetchCalls, 0);
+  assert.equal(result.via, 'tab');
+  assert.equal(result.status, 'morto');
+  assert.equal(tabOptions.useTikTokSession, true);
+  assert.equal(tabOptions.waitForTikTokProfile, false);
+  assert.equal(tabOptions.settle, 8000);
+});
+
 test('uses the slower reusable tab flow for TikTok video fallback', async () => {
   const url = 'https://www.tiktok.com/@creator/video/123456789';
   let tabOptions;

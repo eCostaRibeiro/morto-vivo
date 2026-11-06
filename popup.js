@@ -3,6 +3,7 @@ import { loadSettings, saveSettings, clearHistory, DEFAULT_SETTINGS } from './li
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { MAX_IMPORTED_URLS, MAX_IMPORT_FILE_BYTES, parseUrlList } from './lib/urlList.js';
 import { discardImportedBatch, saveImportedBatch } from './lib/importedBatch.js';
+import { detectPlatform } from './lib/rules.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +19,18 @@ function clearStorageNotice() {
   const notice = $('storageNotice');
   notice.textContent = '';
   notice.hidden = true;
+}
+
+async function openResultsWindow(urls, pageUrl) {
+  const hasTikTok = urls.some((url) => detectPlatform(new URL(url))?.id === 'tiktok');
+  const browserWindow = await chrome.windows.create({
+    url: chrome.runtime.getURL(pageUrl),
+    type: 'normal',
+    focused: !hasTikTok,
+  });
+  if (!Number.isInteger(browserWindow?.id)) {
+    throw new Error('O navegador não retornou o ID da janela de resultados.');
+  }
 }
 
 (async function init() {
@@ -161,15 +174,23 @@ function showInputSummary(valid, invalid, duplicates) {
 $('btnVerificar').addEventListener('click', async () => {
   if (!(await persist())) return;
   if (importedUrls.length) {
+    let batchId;
     try {
-      const batchId = await saveImportedBatch(importedUrls);
-      const resultsPage = window.open(`results.html?batch=${encodeURIComponent(batchId)}`, '_blank');
-      if (!resultsPage) {
-        await discardImportedBatch(batchId);
-        showStorageNotice('O navegador bloqueou a nova aba. Permita pop-ups para iniciar a análise.');
-      }
+      batchId = await saveImportedBatch(importedUrls);
+      await openResultsWindow(
+        importedUrls,
+        `results.html?batch=${encodeURIComponent(batchId)}`,
+      );
     } catch (error) {
-      showStorageNotice(`Não foi possível preparar a lista importada. Detalhe: ${(error && error.message) || error}`);
+      let message = `Não foi possível preparar a lista importada. Detalhe: ${(error && error.message) || error}`;
+      if (batchId) {
+        try {
+          await discardImportedBatch(batchId);
+        } catch (cleanupError) {
+          message += ` Também não foi possível limpar a lista importada: ${(cleanupError && cleanupError.message) || cleanupError}`;
+        }
+      }
+      showStorageNotice(message);
     }
     return;
   }
@@ -191,7 +212,11 @@ $('btnVerificar').addEventListener('click', async () => {
     $('resultados').appendChild(box);
   }
 
-  window.open(`results.html?urls=${encodeURIComponent(JSON.stringify(toCheck))}`, '_blank');
+  try {
+    await openResultsWindow(toCheck, `results.html?urls=${encodeURIComponent(JSON.stringify(toCheck))}`);
+  } catch (error) {
+    showStorageNotice(`Não foi possível abrir a janela de resultados. Detalhe: ${(error && error.message) || error}`);
+  }
 });
 
 let importedUrls = [];
