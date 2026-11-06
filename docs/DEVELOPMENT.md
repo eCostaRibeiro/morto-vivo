@@ -66,8 +66,10 @@ manual no Chrome/Vivaldi.
   pausa a fila da plataforma após HTTP 429 ou desafio explícito, sem interromper outros hosts.
 - `lib/tabs.js`: ciclo de vida da aba temporária e guard de requisições no modo aba. Perfis
   TikTok aguardam o DOM por até 45 segundos, mas retornam antes ao reconhecer cabeçalho de
-  perfil, desafio ou mensagem explícita de conta não encontrada. Conteúdos do TikTok aguardam
-  até 20 segundos por evidência renderizada se o fetch/oEmbed não for conclusivo. Páginas
+  perfil, desafio ou mensagem explícita de conta não encontrada. Vídeos/fotos do TikTok
+  ativam a aba reutilizada durante a navegação e aguardam até 20 segundos pelo estado público
+  com ID correspondente se fetch não for conclusivo, retornando cedo quando há estado
+  disponível/removido. Ao terminar, tentam restaurar a aba anterior. Páginas
   Facebook aguardam até 8 segundos por conteúdo renderizado, sem converter indisponibilidade
   ambígua em remoção.
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS via

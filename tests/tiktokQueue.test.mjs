@@ -34,6 +34,24 @@ test('only pauses the TikTok queue for explicit rate limits or TikTok challenges
   }), false);
 });
 
+test('classifies the Vivaldi TikTok HTTP 403 page as a queue-pausing access block', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    finalUrl: url,
+    status: null,
+    html: '',
+    renderedText: "Access to www.tiktok.com was denied. You don't have authorisation to view this page. HTTP ERROR 403",
+    platform: detectPlatform(new URL(url)),
+    via: 'tab',
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.httpStatus, 403);
+  assert.match(result.reason, /^TikTok limitou ou desafiou a consulta \(HTTP 403\)/);
+  assert.equal(shouldPauseTikTokQueue({ ...result, platform: 'tiktok' }), true);
+});
+
 test('a verification phrase in a profile bio does not pause the following TikTok check', async () => {
   const url = 'https://www.tiktok.com/@creator';
   const result = classifyPage({
