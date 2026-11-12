@@ -128,6 +128,27 @@ test('keeps Facebook unavailable content indeterminate instead of treating priva
   assert.deepEqual(result.tags, ['content-unavailable']);
 });
 
+test('prefers public Facebook profile metadata over a generic unavailable notice', () => {
+  const url = 'https://facebook.com/victor10vivo';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    html: `
+      <meta property="og:type" content="video.other">
+      <meta property="og:title" content="Gerente de contas VIVO S.A.">
+      <meta property="og:description" content="Gerente de contas VIVO S.A. 35 seguidores. Empresa de telecomunicações">
+      <meta property="og:url" content="https://www.facebook.com/victor10vivo/">
+    `,
+    renderedText: "This content isn't available right now. This usually happens when the owner shared it with a small group, changed who can see it, or it was deleted.",
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Perfil público encontrado pelos metadados do Facebook');
+  assert.equal(result.confidence, 'alta');
+});
+
 test('classifies the Facebook unavailable-now notice as a possible takedown', () => {
   const url = 'https://www.facebook.com/profile.php?id=61594203218424';
   const result = classifyPage({
