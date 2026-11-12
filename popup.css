@@ -14,7 +14,7 @@
   --md-focus: #3D286F;
 }
 body {
-  width: 370px;
+  width: calc(370px / var(--ui-scale, 1));
   margin: 0;
   background-color: var(--md-surface);
   color: var(--md-on-surface);
@@ -94,6 +94,34 @@ textarea {
 .url-counter.over-limit {
   color: var(--md-error);
   font-weight: 600;
+}
+.page-import-controls {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+.page-import-controls button {
+  flex: 1;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--md-primary);
+  border-radius: 18px;
+  background: transparent;
+  color: var(--md-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.page-import-controls button:hover:not(:disabled) {
+  background: var(--md-surface-container);
+}
+.page-import-controls button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+.page-import-controls button[hidden] {
+  display: none;
 }
 .import-section {
   margin: 12px 0;

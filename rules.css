@@ -20,14 +20,17 @@ body {
   font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif;
 }
 .header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--primary);
   color: var(--on-primary);
   padding: 16px max(24px, calc((100vw - 920px) / 2));
   box-shadow: 0 1px 3px rgba(0,0,0,.16);
 }
 .header h1 {
-  max-width: 920px;
-  margin: 0 auto;
+  flex: 1;
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
 }

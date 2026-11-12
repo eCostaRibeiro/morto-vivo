@@ -42,7 +42,7 @@ test('missing stored values still use empty history and default settings', async
   }, async () => {
     assert.deepEqual(await loadHistory(), {});
     assert.deepEqual(await loadSettings(), {
-      tabMode: false, completionNotification: false, markCheckedUrls: false, customRules: [],
+      tabMode: false, completionNotification: false, markCheckedUrls: false, contentSize: 'normal', customRules: [],
     });
   });
 });
@@ -101,11 +101,11 @@ test('ignores and removes legacy settings', async () => {
     remove: async () => {},
   }, async () => {
     assert.deepEqual(await loadSettings(), {
-      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, contentSize: 'normal', customRules: [],
     });
     await saveSettings(await loadSettings());
     assert.deepEqual(storedSettings, {
-      tabMode: true, completionNotification: true, markCheckedUrls: false, customRules: [],
+      tabMode: true, completionNotification: true, markCheckedUrls: false, contentSize: 'normal', customRules: [],
     });
   });
 });
@@ -125,6 +125,27 @@ test('persists the page URL marker preference', async () => {
     });
     assert.equal((await loadSettings()).markCheckedUrls, true);
     assert.equal(storedSettings.markCheckedUrls, true);
+  });
+});
+
+test('persists supported content sizes and defaults invalid values to normal', async () => {
+  let storedSettings;
+  await withChromeStorage({
+    get: async () => ({ mv_settings: storedSettings }),
+    set: async (values) => { storedSettings = values.mv_settings; },
+    remove: async () => {},
+  }, async () => {
+    await saveSettings({
+      tabMode: false,
+      completionNotification: false,
+      contentSize: 'large',
+      customRules: [],
+    });
+    assert.equal((await loadSettings()).contentSize, 'large');
+    assert.equal(storedSettings.contentSize, 'large');
+
+    storedSettings.contentSize = 'huge';
+    assert.equal((await loadSettings()).contentSize, 'normal');
   });
 });
 
@@ -148,6 +169,7 @@ test('persists only valid custom classification rules', async () => {
       tabMode: false,
       completionNotification: false,
       markCheckedUrls: false,
+      contentSize: 'normal',
       customRules: [{ status: 'morto', term: 'anúncio removido' }],
     });
   });

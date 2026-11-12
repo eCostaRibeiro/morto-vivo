@@ -25,7 +25,7 @@
 
   function removeBadge(link) {
     link.removeAttribute('data-mv-checked-status');
-    const badge = link.nextElementSibling;
+    const badge = link.previousElementSibling;
     if (badge?.hasAttribute('data-mv-history-badge')) badge.remove();
   }
 
@@ -38,11 +38,11 @@
     }
 
     link.setAttribute('data-mv-checked-status', status);
-    let badge = link.nextElementSibling;
+    let badge = link.previousElementSibling;
     if (!badge?.hasAttribute('data-mv-history-badge')) {
       badge = document.createElement('span');
       badge.setAttribute('data-mv-history-badge', '');
-      link.after(badge);
+      link.before(badge);
     }
     badge.className = 'mv-history-badge';
     badge.dataset.status = status;

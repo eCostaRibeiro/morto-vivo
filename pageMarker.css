@@ -1,7 +1,8 @@
-a[data-mv-checked-status] + [data-mv-history-badge] {
+[data-mv-history-badge] {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
-  margin-inline-start: 0.4em;
+  margin-inline-end: 0.4em;
   padding: 0.05em 0.45em;
   border: 1px solid currentColor;
   border-radius: 0.35em;
@@ -12,22 +13,22 @@ a[data-mv-checked-status] + [data-mv-history-badge] {
   pointer-events: none;
 }
 
-a[data-mv-checked-status="morto"] + [data-mv-history-badge] {
+[data-mv-history-badge][data-status="morto"] {
   color: #a61b1b;
   background: #fff0f0;
 }
 
-a[data-mv-checked-status="vivo"] + [data-mv-history-badge] {
+[data-mv-history-badge][data-status="vivo"] {
   color: #176b36;
   background: #e9f8ee;
 }
 
-a[data-mv-checked-status="zumbi"] + [data-mv-history-badge] {
+[data-mv-history-badge][data-status="zumbi"] {
   color: #805500;
   background: #fff5d6;
 }
 
-a[data-mv-checked-status="indeterminado"] + [data-mv-history-badge] {
+[data-mv-history-badge][data-status="indeterminado"] {
   color: #4d5360;
   background: #edf0f4;
 }

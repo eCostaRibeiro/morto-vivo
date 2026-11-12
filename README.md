@@ -2,9 +2,12 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.68**, definida em `manifest.json`.
+extensão é **2.69**, definida em `manifest.json`.
 
-Esta versão melhora o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
+A versão **2.69** posiciona a marca de classificação das URLs verificadas antes do link,
+mantendo-a visível quando o texto do endereço é truncado.
+
+A versão 2.68 melhorou o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
 quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
 respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
@@ -35,7 +38,7 @@ HTTP 404 continua **Morto** com alta confiança para a URL consultada; isso não
 o domínio inteiro esteja fora do ar. Esses status genéricos não são tratados como prova de
 derrubada/takedown.
 
-Esta versão torna mais conservadora a identificação de páginas de erro Cloudflare: menções
+A versão 2.68 tornou mais conservadora a identificação de páginas de erro Cloudflare: menções
 em artigos ou páginas normais não são tratadas como falha, o bloqueio 1020 fica
 indeterminado e respostas HTTP 520 são identificadas como erro Cloudflare. Também detecta
 páginas estacionadas da GoDaddy e de outros provedores conhecidos quando a página inicial

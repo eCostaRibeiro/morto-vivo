@@ -1,0 +1,120 @@
+html {
+  zoom: var(--ui-scale, 1);
+}
+
+.ui-scale-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--md-muted, var(--muted));
+  font-size: 13px;
+}
+
+.header .ui-scale-control {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+  color: inherit;
+}
+
+.header .header-action {
+  margin-left: 0;
+}
+
+.header .ui-scale-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ui-scale-buttons {
+  display: inline-flex;
+  border: 1px solid var(--md-outline, var(--outline));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.header .ui-scale-buttons {
+  border-color: rgba(255,255,255,.4);
+}
+
+.ui-scale-buttons button {
+  min-width: 38px;
+  min-height: 34px;
+  padding: 4px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--md-primary, var(--primary));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.header .ui-scale-buttons button {
+  box-sizing: border-box;
+  width: 29px;
+  min-width: 29px;
+  min-height: 32px;
+  padding: 3px 5px;
+  color: inherit;
+  font-size: 12px;
+}
+
+.ui-scale-buttons button + button {
+  border-left: 1px solid var(--md-outline, var(--outline));
+}
+
+.header .ui-scale-buttons button + button {
+  border-left-color: rgba(255,255,255,.4);
+}
+
+.ui-scale-buttons button[aria-pressed="true"] {
+  background: var(--md-primary, var(--primary));
+  color: var(--md-on-primary, var(--on-primary));
+}
+
+.header .ui-scale-buttons button[aria-pressed="true"] {
+  background: var(--md-on-primary, var(--on-primary));
+  color: var(--md-primary, var(--primary));
+}
+
+.ui-scale-buttons button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.ui-scale-buttons button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--md-focus, var(--focus));
+  outline-offset: -3px;
+}
+
+.ui-scale-label {
+  min-width: 95px;
+}
+
+.ui-scale-message {
+  color: var(--md-error, var(--error));
+  flex-basis: 100%;
+}
+
+.ui-scale-message[hidden] {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .ui-scale-control {
+    flex-wrap: wrap;
+  }
+
+  .header .ui-scale-control {
+    flex-wrap: nowrap;
+  }
+}

@@ -4,6 +4,7 @@ import {
 } from './lib/customRules.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/history.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
+import { installUiScaleControl } from './lib/uiScale.js';
 
 const $ = (id) => document.getElementById(id);
 const labels = { vivo: 'Vivo', zumbi: 'Zumbi', morto: 'Morto' };
@@ -11,6 +12,7 @@ let rules = [];
 let savedRules = [];
 
 installButtonSoundFeedback();
+installUiScaleControl();
 
 function hasUnsavedChanges() {
   if (rules.length !== savedRules.length) return true;

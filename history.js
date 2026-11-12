@@ -3,9 +3,11 @@ import {
   clearQueryHistory, loadQueryHistory, MAX_QUERY_HISTORY, setQueryFavorite,
 } from './lib/queryHistory.js';
 import { discardImportedBatch, saveImportedBatch } from './lib/importedBatch.js';
+import { installUiScaleControl } from './lib/uiScale.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
+installUiScaleControl();
 
 let entries = [];
 let favorites = [];

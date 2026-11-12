@@ -6,10 +6,20 @@
   <title>Histórico de análises - Morto-Vivo</title>
   <link rel="stylesheet" href="results.css">
   <link rel="stylesheet" href="history.css">
+  <link rel="stylesheet" href="uiScale.css">
 </head>
 <body>
   <header class="header">
     <h1><span aria-hidden="true">🧟‍♂️🔗</span> Histórico de análises</h1>
+    <div class="ui-scale-control" data-ui-scale-control role="group" aria-label="Tamanho da interface">
+      <span class="ui-scale-label" aria-live="polite">Tamanho padrão</span>
+      <div class="ui-scale-buttons">
+        <button type="button" data-ui-scale="compact" aria-label="Usar tamanho compacto" title="Diminuir tamanho da interface">A−</button>
+        <button type="button" data-ui-scale="normal" aria-label="Usar tamanho padrão" title="Usar tamanho padrão da interface">A</button>
+        <button type="button" data-ui-scale="large" aria-label="Usar tamanho amplo" title="Aumentar tamanho da interface">A+</button>
+      </div>
+      <span class="ui-scale-message" role="status" aria-live="polite" hidden></span>
+    </div>
     <button class="header-action" id="btnManageRules" type="button" aria-label="Gerenciar regras de classificação" title="Gerenciar regras de classificação">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.49.49 0 0 0 13.89 2h-3.78a.49.49 0 0 0-.49.42L9.26 4.96c-.59.23-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0-.05.94 7.5 7.5 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.49.39 1.04.71 1.63.94l.36 2.54a.49.49 0 0 0 .49.42h3.78a.49.49 0 0 0 .49-.42l.36-2.54c.59-.23 1.14-.55 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
     </button>

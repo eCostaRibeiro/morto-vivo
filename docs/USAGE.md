@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.68** antes de testar os recursos recentes.
+   **2.69** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -49,6 +49,16 @@ URLs válidas e únicas em relação ao limite, por exemplo `30/200`; acima do l
 que somente as primeiras 200 serão analisadas. A revisão da entrada também informa URLs
 inválidas e duplicadas; as inválidas mostram os critérios básicos aceitos.
 
+Use **Importar URLs da página aberta** para ler os textos de URLs exibidos na aba ativa.
+A extensão procura em textos de links, células de tabelas e cards, sem usar o destino
+(`href`) dos links da lista. Quando identifica controles de paginação, avança por páginas
+da mesma origem na própria aba ativa até o fim, removendo duplicatas; a aba permanece
+na última página lida. A navegação pode parar se o site não
+atualizar, repetir uma página ou usar um controle que não possa ser identificado com
+segurança. O conteúdo é preenchido para revisão no campo de URLs; a análise só começa
+quando você clicar em **Verificar Status**. A coleta não tem limite fixo de páginas ou
+URLs; listas muito grandes podem levar tempo e ocupar o armazenamento local.
+
 <figure>
   <img src="assets/presentation/popup.png" alt="Popup com três URLs fictícias, contador, botão de verificação, importação TXT e opções recolhidas" width="420">
   <figcaption>Tela inicial: cole uma URL por linha ou abra a importação TXT para um lote maior.</figcaption>
@@ -59,6 +69,13 @@ rápidas. Ao navegar com teclado, use Tab para chegar aos controles e Enter ou E
 acioná-los; os rótulos e descrições principais das opções também ficam visíveis no popup.
 O botão de engrenagem no cabeçalho do popup ou da página de resultados abre o gerenciador
 de regras de classificação.
+
+### Tamanho da interface
+
+Use os controles **A−**, **A** e **A+** no início das telas do popup, resultados, histórico
+e regras para escolher entre tamanho compacto, padrão e amplo. A preferência é salva neste
+navegador e sincronizada entre as telas abertas; ela altera textos, controles e cartões sem
+modificar o conteúdo ou a classificação das URLs.
 
 ## Histórico de análises
 
@@ -271,7 +288,8 @@ não enviam notificação de conclusão.
 ### Marcação de URLs verificadas
 
 Ative **Marcar URLs verificadas nas páginas** para mostrar a classificação mais recente ao
-lado dos links reconhecidos em páginas HTTP/HTTPS, inclusive nas abas que já estavam abertas.
+início dos links reconhecidos em páginas HTTP/HTTPS, inclusive nas abas que já estavam abertas.
+A marca fica antes do texto da URL para continuar visível quando o endereço é resumido ou truncado.
 A correspondência usa o endereço completo normalizado; o status mostrado considera uma
 classificação manual quando houver uma. A marcação acompanha links adicionados dinamicamente
 e é atualizada quando o histórico muda. Ela não faz novas consultas nem envia conteúdo da
@@ -360,7 +378,10 @@ essencial.
 - Clique no cabeçalho de uma categoria para expandir/recolher os resultados; o botão
   **Expandir/Recolher** oferece o mesmo controle por teclado.
 - Categorias sem resultados são ocultadas. Em categorias com links, o menu **Ações** reúne
-  **Abrir todos** e **Copiar todos**; abrir muitos links solicita confirmação.
+  **Selecionar todos**, **Abrir todos** e **Copiar todos**. **Selecionar todos** adiciona à
+  seleção os resultados da categoria que passam pelos filtros atuais, inclusive os que ainda
+  não foram exibidos por paginação, sem remover seleções de outras categorias; abrir muitos
+  links solicita confirmação.
 - Para manter a página responsiva em listas grandes, cada categoria mostra até 50 cards por
   vez. Use **Mostrar mais** para carregar o próximo bloco ou **Mostrar todos** para expandir
   a categoria inteira. Os filtros continuam considerando todos os resultados, inclusive os

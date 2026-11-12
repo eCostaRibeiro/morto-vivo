@@ -5,10 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Regras personalizadas - Morto-Vivo</title>
   <link rel="stylesheet" href="rules.css">
+  <link rel="stylesheet" href="uiScale.css">
 </head>
 <body>
   <header class="header">
     <h1><span aria-hidden="true">🧟‍♂️🔗</span> Regras de classificação</h1>
+    <div class="ui-scale-control" data-ui-scale-control role="group" aria-label="Tamanho da interface">
+      <span class="ui-scale-label" aria-live="polite">Tamanho padrão</span>
+      <div class="ui-scale-buttons">
+        <button type="button" data-ui-scale="compact" aria-label="Usar tamanho compacto" title="Diminuir tamanho da interface">A−</button>
+        <button type="button" data-ui-scale="normal" aria-label="Usar tamanho padrão" title="Usar tamanho padrão da interface">A</button>
+        <button type="button" data-ui-scale="large" aria-label="Usar tamanho amplo" title="Aumentar tamanho da interface">A+</button>
+      </div>
+      <span class="ui-scale-message" role="status" aria-live="polite" hidden></span>
+    </div>
   </header>
   <main class="container">
     <p class="intro">Crie regras para classificar páginas que contenham frases específicas. Elas são aplicadas a futuras análises. Use um trecho distintivo de até 1.000 caracteres; quebras de linha viram espaços e links no formato Markdown são comparados pelo texto visível.</p>

@@ -23,9 +23,11 @@ import { FETCH_PAGE_TIMEOUT_MS } from './lib/config.js';
 import { runBatch } from './lib/batchRunner.js';
 import { addQueryHistory } from './lib/queryHistory.js';
 import { detectPlatform } from './lib/rules.js';
+import { installUiScaleControl } from './lib/uiScale.js';
 
 const $ = (id) => document.getElementById(id);
 installButtonSoundFeedback();
+installUiScaleControl();
 const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 function showStorageWarning(message) {

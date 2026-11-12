@@ -6,7 +6,8 @@ O manifesto solicita:
 
 - `storage`: salvar configurações e histórico local de verificações.
 - `scripting`: ler o DOM em uma aba no modo aba e, quando **Marcar URLs verificadas nas
-  páginas** estiver ativado, identificar links em páginas HTTP/HTTPS e aplicar as etiquetas.
+  páginas** estiver ativado, identificar links em páginas HTTP/HTTPS e aplicar as etiquetas;
+  também é usado quando você solicita a importação dos textos de URLs da aba ativa.
 - `debugger`: instalar o guard de rede usado pela leitura em aba. O Chromium não permite
   declarar essa permissão como opcional, então ela é solicitada na instalação da extensão,
   mesmo que o modo aba não seja usado.
@@ -19,6 +20,12 @@ e depuração. A marcação de páginas é opcional, começa desativada e pode s
 popup; com ela ativa, a extensão compara os links com o histórico local e observa alterações
 no conteúdo da página, sem enviar esse conteúdo para fora do navegador. O modo aba usa a
 sessão autenticada em sites compatíveis, então prefira um perfil dedicado.
+
+A importação da aba ativa só começa após clicar no botão correspondente. Ela lê textos
+visíveis de links, células e cards; não coleta o `href` dos links de resultados nem envia o
+conteúdo da página para fora do navegador. Se encontrar paginação identificável, pode clicar
+no controle de próxima página da mesma origem para continuar a leitura, deixando a aba na
+última página percorrida. Revise as URLs importadas antes de iniciar as verificações.
 
 ## Tráfego de rede
 

@@ -5,11 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Resultados - Morto-Vivo</title>
   <link rel="stylesheet" href="results.css">
+  <link rel="stylesheet" href="uiScale.css">
 </head>
 <body>
   <header class="header">
     <h1><span aria-hidden="true">🧟‍♂️🔗</span> Resultados - Morto-Vivo</h1>
     <span class="header-version" id="extensionVersion"></span>
+    <div class="ui-scale-control" data-ui-scale-control role="group" aria-label="Tamanho da interface">
+      <span class="ui-scale-label" aria-live="polite">Tamanho padrão</span>
+      <div class="ui-scale-buttons">
+        <button type="button" data-ui-scale="compact" aria-label="Usar tamanho compacto" title="Diminuir tamanho da interface">A−</button>
+        <button type="button" data-ui-scale="normal" aria-label="Usar tamanho padrão" title="Usar tamanho padrão da interface">A</button>
+        <button type="button" data-ui-scale="large" aria-label="Usar tamanho amplo" title="Aumentar tamanho da interface">A+</button>
+      </div>
+      <span class="ui-scale-message" role="status" aria-live="polite" hidden></span>
+    </div>
     <button class="header-action" id="btnQueryHistory" type="button" aria-label="Abrir histórico de análises" title="Ver as últimas 100 análises">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3Zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8H12Z"/></svg>
     </button>

@@ -4,10 +4,13 @@ import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { MAX_IMPORTED_URLS, MAX_IMPORT_FILE_BYTES, parseUrlList } from './lib/urlList.js';
 import { discardImportedBatch, saveImportedBatch } from './lib/importedBatch.js';
 import { detectPlatform } from './lib/rules.js';
+import { installUiScaleControl } from './lib/uiScale.js';
+import { collectUrlsFromTab } from './lib/pageUrlImport.js';
 
 const $ = (id) => document.getElementById(id);
 
 installButtonSoundFeedback();
+installUiScaleControl();
 
 function showStorageNotice(message) {
   const notice = $('storageNotice');
@@ -222,6 +225,69 @@ $('btnVerificar').addEventListener('click', async () => {
 
 let importedUrls = [];
 let importRevision = 0;
+let pageImportController = null;
+
+$('btnImportPageUrls').addEventListener('click', async () => {
+  if (pageImportController) return;
+  const controller = new AbortController();
+  pageImportController = controller;
+  importRevision++;
+  importedUrls = [];
+  $('btnImportPageUrls').disabled = true;
+  $('btnImportPageUrls').textContent = 'Lendo página…';
+  $('btnCancelPageImport').hidden = false;
+  $('btnVerificar').disabled = true;
+  $('listaUrls').disabled = true;
+  $('arquivoUrls').disabled = true;
+  $('pageImportStatus').textContent = 'Localizando a aba ativa…';
+  $('importSection').open = true;
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!Number.isInteger(tab?.id)) throw new Error('Não foi possível identificar a aba ativa.');
+    if (!/^https?:\/\//i.test(tab.url || '')) {
+      throw new Error('A aba ativa não é uma página HTTP/HTTPS legível pela extensão.');
+    }
+
+    const result = await collectUrlsFromTab(tab.id, {
+      signal: controller.signal,
+      onProgress: ({ pages, urls }) => {
+        $('pageImportStatus').textContent = `Lendo página ${pages} · ${urls} URLs únicas encontradas…`;
+      },
+    });
+    const parsed = parseUrlList(result.urls.join('\n'));
+    importedUrls = parsed.valid;
+    if (importedUrls.length) {
+      $('listaUrls').value = importedUrls.join('\n');
+      updateUrlCounter();
+      $('importPreview').textContent = `${importedUrls.length} URL${importedUrls.length === 1 ? '' : 's'} importada${importedUrls.length === 1 ? '' : 's'} de ${result.pages} página${result.pages === 1 ? '' : 's'} lida${result.pages === 1 ? '' : 's'}. Revise a lista antes de verificar.`;
+      placeVerifyButtonInImportFlow();
+    } else {
+      importedUrls = [];
+      $('importPreview').textContent = 'Nenhuma URL reconhecida no texto da página.';
+      placeVerifyButtonInPasteFlow();
+    }
+    $('pageImportStatus').textContent = result.reason
+      ? `${result.reason} ${importedUrls.length} URL${importedUrls.length === 1 ? '' : 's'} mantida${importedUrls.length === 1 ? '' : 's'} para revisão.`
+      : `Leitura concluída: ${result.pages} página${result.pages === 1 ? '' : 's'} e ${importedUrls.length} URL${importedUrls.length === 1 ? '' : 's'} única${importedUrls.length === 1 ? '' : 's'}.`;
+  } catch (error) {
+    $('pageImportStatus').textContent = `Não foi possível importar URLs da página. Detalhe: ${(error && error.message) || error}`;
+  } finally {
+    pageImportController = null;
+    $('btnImportPageUrls').disabled = false;
+    $('btnImportPageUrls').textContent = 'Importar URLs da página aberta';
+    $('btnCancelPageImport').hidden = true;
+    $('btnVerificar').disabled = false;
+    $('listaUrls').disabled = false;
+    $('arquivoUrls').disabled = false;
+  }
+});
+
+$('btnCancelPageImport').addEventListener('click', () => {
+  pageImportController?.abort();
+  $('pageImportStatus').textContent = 'Cancelando leitura após a página atual…';
+});
+
 $('arquivoUrls').addEventListener('change', async (event) => {
   const fileInput = event.currentTarget;
   const file = fileInput.files?.[0];
