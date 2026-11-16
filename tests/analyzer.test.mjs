@@ -234,6 +234,34 @@ test('applies literal custom rules to generic page text and marks their result',
   assert.deepEqual(result.tags, ['custom']);
 });
 
+test('applies built-in rules from the CSV and lets user rules take precedence', () => {
+  const phrases = [
+    'Este conteúdo não está disponível no momento Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.',
+    'Sorry, something has gone wrong rendering this viz. Please refresh and try again.',
+    'Este classificado não está mais disponível.',
+  ];
+
+  for (const phrase of phrases) {
+    const result = classifyPage({
+      url: 'https://example.com/item',
+      status: 200,
+      html: `<p>${phrase}</p>`,
+    });
+    assert.equal(result.status, 'morto');
+    assert.match(result.reason, /Regra padrão/);
+    assert.deepEqual(result.tags, ['default-rule']);
+  }
+
+  const overridden = classifyPage({
+    url: 'https://example.com/item',
+    status: 200,
+    html: `<p>${phrases[2]}</p>`,
+    customRules: [{ status: 'zumbi', term: phrases[2] }],
+  });
+  assert.equal(overridden.status, 'zumbi');
+  assert.deepEqual(overridden.tags, ['custom']);
+});
+
 test('passes custom rules through the URL analysis pipeline', async () => {
   const result = await checkUrl('https://example.com/item', {
     doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['93.184.216.34'] }),

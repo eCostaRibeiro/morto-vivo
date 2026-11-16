@@ -329,6 +329,10 @@ em vez de colar o conteúdo inteiro da página. Use **Adicionar regra** para cri
 **Remover** para excluí-la e **Salvar regras** para aplicar as alterações. Fechar sem salvar
 descarta as alterações desde o último salvamento.
 
+Além das regras editáveis, a extensão inclui as três frases do CSV de 16/11/2026 como
+regras padrão de `morto`, disponíveis sem importação em todas as instalações. Elas não
+aparecem no editor nem nos CSV exportados; uma regra pessoal correspondente tem precedência.
+
 **Exportar CSV** baixa uma cópia das regras salvas (não inclui edições ainda não salvas),
 com as colunas `status` e `frase`, para backup ou transferência. O arquivo usa UTF-8 com
 BOM, separador `;` e cabeçalho `status;frase`. **Importar CSV** carrega um arquivo
@@ -338,8 +342,8 @@ sem modificar o rascunho. Se houver alterações ainda não salvas, a interface 
 confirmação antes de substituí-las. CSV é usado para regras; listas de URLs são importadas
 em TXT.
 
-Uma regra personalizada é aplicada depois de CAPTCHA, códigos HTTP explícitos, sinais de
-remoção específicos da plataforma, soft-404 e páginas estacionadas; antes da classificação
+Regras pessoais e padrões são aplicados depois de CAPTCHA, códigos HTTP explícitos, sinais
+de remoção específicos da plataforma, soft-404 e páginas estacionadas; antes da classificação
 genérica de conteúdo público da plataforma. Uma regra correspondente não sobrepõe uma
 barreira de login detectada, nem respostas definitivas das sondas de API. Sem uma regra
 correspondente, banners de login não impedem por si só a classificação normal de um perfil
