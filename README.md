@@ -2,25 +2,42 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.69**, definida em `manifest.json`.
+extensão é **2.72**, definida em `manifest.json`.
 
-A versão **2.69** posiciona a marca de classificação das URLs verificadas antes do link,
+A versão **2.72** aguarda evidência do perfil TikTok quando a página mostra apenas “Please
+wait...”, em vez de encerrar a consulta como desafio imediatamente. Desafios explícitos
+continuam pausando a fila sem novas tentativas.
+
+A versão 2.71 prioriza perfis TikTok antes dos demais links do TikTok na fila, preservando a
+ordem das URLs de outras plataformas. O selo da janela TikTok exclusiva só aparece depois
+que a leitura da página retorna com sucesso; falhas aparecem como tentativa de aba, não como
+leitura concluída.
+
+A versão 2.69 posicionou a marca de classificação das URLs verificadas antes do link,
 mantendo-a visível quando o texto do endereço é truncado.
 
 A versão 2.68 melhorou o suporte ao TikTok: reconhece vídeos e publicações de fotos/carrosséis
 quando há estado público correspondente, valida o ID retornado pelo oEmbed e não trata
 respostas ambíguas ou HTTP 404 isolado como remoção confirmada. Links curtos também podem
 ser classificados pelo destino canônico após o redirecionamento. Perfis e conteúdos sem
-evidência suficiente permanecem indeterminados. As consultas TikTok são serializadas e a
-fila é pausada após HTTP 429 ou HTTP 403 com desafio explícito; frases em bios e legendas
-não pausam o lote. URLs TikTok sempre são lidas numa janela dedicada e focada, aberta no
-início do lote com a home do TikTok; a mesma aba é reutilizada apenas para URLs TikTok e a
-janela fecha ao concluir ou cancelar o lote. A janela de resultados abre separadamente e sem
+evidência suficiente permanecem indeterminados. Cada URL TikTok tem limite total de 20
+segundos para navegação, leitura e enriquecimento; ao excedê-lo, o resultado fica
+indeterminado e não há retry. As consultas TikTok são serializadas e a fila é pausada após
+HTTP 429, HTTP 403 em requisições da plataforma ou desafio anti-bot explícito, sem tentar
+resolver desafios; frases em bios e legendas não pausam o lote. Não há cooldown entre lotes.
+Após cada URL TikTok concluída, a fila aguarda pelo menos 10 segundos antes de iniciar a
+próxima URL TikTok; esse intervalo é separado do limite por URL. URLs TikTok sempre são lidas numa janela
+dedicada e focada, aberta no início do lote com a home do TikTok; a mesma aba é reutilizada
+apenas para URLs TikTok e a janela fecha ao concluir ou cancelar o lote. A janela de resultados abre separadamente e sem
 foco inicial, para manter o TikTok ativo durante a análise. As janelas abrem em tamanho
 compacto, sem maximização; a janela de resultados não exibe abas nem barra de endereço.
-Perfis podem aguardar até 45
-segundos pela evidência renderizada; a leitura retorna antes ao encontrar um cabeçalho de
-perfil, uma tela de desafio ou uma mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
+Se a sessão dedicada não iniciar, as URLs TikTok são pausadas com o erro de inicialização,
+sem fallback para uma consulta fetch.
+Se a captura de status HTTP via CDP não responder, a leitura continua com o guard de
+requisições ativo; o aviso fica disponível nos detalhes do resultado.
+Perfis aguardam evidência renderizada dentro do limite total de 20 segundos por URL; a
+leitura retorna antes ao encontrar um cabeçalho de perfil, uma tela de desafio ou uma
+mensagem explícita de conta não encontrada. O aviso localizado “Não foi possível
 localizar esta conta” é interpretado como indisponibilidade do perfil, inclusive quando
 aparece no cabeçalho ou depois da navegação da página. Anúncios da Shopee com indicação de
 estoque esgotado são classificados como mortos quando essa evidência aparece na página ou
@@ -29,6 +46,15 @@ segundos; destino com NXDOMAIN fica indeterminado e identifica o domínio de des
 Links da Biblioteca de Anúncios da Meta também são identificados por ID, distinguindo anúncio
 ativo, pausado/inativo e indisponível na biblioteca sem tratar toda indisponibilidade como
 takedown.
+
+No X, um post com a mensagem explícita de que está disponível somente no aplicativo é
+classificado como **Vivo**. Perfis também são reconhecidos quando os metadados públicos
+confirmam o mesmo identificador da URL e mostram atividade de posts, ou quando a aba
+renderiza o cabeçalho de publicações do perfil.
+
+No TikTok, se um vídeo redireciona para a página inicial, a análise só o classifica como
+**Vivo** quando encontra no feed um link com o ID exato solicitado. Sem essa correspondência,
+o resultado fica Indeterminado e informa que o redirecionamento impediu a confirmação.
 
 ### Decisões de classificação HTTP
 
@@ -55,6 +81,10 @@ localmente, sem apagar o resultado automático nem seus motivos. Também é poss
 vários cards e aplicar a mesma classificação manual em lote. Divergências entre a decisão
 manual e a nova classificação automática ficam visíveis no card; as categorias exibem os
 resultados em blocos para manter a página responsiva em listas grandes.
+URLs que não chegaram a ser consultadas após a pausa da fila TikTok aparecem em uma categoria
+separada, sem serem contadas como resultados automáticos Indeterminados nem atualizarem o
+histórico por URL. O resumo distingue resultados automáticos, classificações manuais e URLs
+não consultadas; a ação de reverificação também inclui as URLs pausadas.
 
 **Firefox ainda não é suportado.** A compatibilidade está em avaliação; veja o plano no
 [guia de desenvolvimento](docs/DEVELOPMENT.md).

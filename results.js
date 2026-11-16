@@ -12,7 +12,9 @@ import {
 } from './lib/history.js';
 import { buildReport, toCsv, toJson } from './lib/exports.js';
 import { installButtonSoundFeedback } from './lib/audioFeedback.js';
-import { CATEGORIES, closeActionMenu, createResultsView } from './lib/resultsView.js';
+import {
+  closeActionMenu, createResultsView, formatStatusCounts, isQueuePaused, summarizeResults,
+} from './lib/resultsView.js';
 import { consumeImportedBatch, ImportedBatchExpiredError } from './lib/importedBatch.js';
 import { norm } from './lib/text.js';
 import {
@@ -163,9 +165,10 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
       ctx.opts.tiktokSessionReady = true;
     } catch (error) {
       ctx.opts.tiktokSessionReady = false;
+      ctx.opts.tiktokSessionError = String((error && error.message) || error);
       showStorageWarning(
         `Não foi possível iniciar a aba TikTok dedicada; URLs TikTok permanecerão indeterminadas. `
-        + `Detalhe: ${(error && error.message) || error}`,
+        + `Detalhe: ${ctx.opts.tiktokSessionError}`,
       );
     }
   }
@@ -202,11 +205,12 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
     showStorageWarning(`Não foi possível salvar o histórico desta análise. Detalhe: ${(err && err.message) || err}`);
   }
   try {
-    const summary = Object.fromEntries(CATEGORIES.map(({ status }) => [
-      status,
-      urls.filter((url) => state.results.get(url)?.status === status).length,
-    ]));
-    await addQueryHistory(urls, summary);
+    const resultSummary = summarizeResults(urls.map((url) => state.results.get(url)).filter(Boolean));
+    await addQueryHistory(urls, {
+      ...resultSummary.automatic,
+      manual: resultSummary.manualCount,
+      naoConsultado: resultSummary.pausedCount,
+    });
   } catch (err) {
     showStorageWarning(`Não foi possível salvar esta análise no histórico de consultas. Detalhe: ${(err && err.message) || err}`);
   }
@@ -215,13 +219,14 @@ async function runChecks(urls, { tabMode, notifyOnComplete = true }) {
   scheduleRender();
   setButtons();
   if (notifyOnComplete && !state.cancelled) {
-    const counts = Object.fromEntries(CATEGORIES.map((cat) => [
-      cat.status,
-      urls.map((url) => state.results.get(url))
-        .filter((result) => result?.status === cat.status).length,
-    ]));
-    let message = `Monitoramento concluído: ${urls.length} links — ${counts.vivo} vivos, `
-      + `${counts.zumbi} zumbis, ${counts.morto} mortos e ${counts.indeterminado} indeterminados.`;
+    const resultSummary = summarizeResults(urls.map((url) => state.results.get(url)).filter(Boolean));
+    let message = resultSummary.manualCount || resultSummary.pausedCount
+      ? `Monitoramento concluído: ${urls.length} links — automáticos consultados: ${formatStatusCounts(resultSummary.automatic)}; `
+        + `manuais: ${resultSummary.manualCount} (${formatStatusCounts(resultSummary.manual)}); `
+        + `não consultados: ${resultSummary.pausedCount}.`
+      : `Monitoramento concluído: ${urls.length} links — ${resultSummary.automatic.vivo} vivos, `
+        + `${resultSummary.automatic.zumbi} zumbis, ${resultSummary.automatic.morto} mortos e `
+        + `${resultSummary.automatic.indeterminado} indeterminados.`;
     if (tiktokPausedCount) {
       message += ` TikTok pausado: ${tiktokPausedCount} perfil(is) não consultado(s) após ${tiktokQueuePauseReason}.`;
     }
@@ -256,7 +261,7 @@ function setProgress(text) {
 function setButtons() {
   const has = state.results.size > 0 && !state.running;
   ['btnCsv', 'btnJson', 'btnReport', 'btnCopy'].forEach((id) => { $(id).disabled = !has; });
-  $('btnRecheck').disabled = !has || !all().some((r) => r.status === 'indeterminado');
+  $('btnRecheck').disabled = !has || !all().some((r) => r.status === 'indeterminado' || isQueuePaused(r));
   $('btnCancelar').style.display = state.running ? '' : 'none';
   $('btnCancelar').setAttribute('aria-hidden', String(!state.running));
   $('btnCancelar').disabled = !state.running || state.cancelled;
@@ -416,7 +421,7 @@ $('btnCopy').addEventListener('click', async () => {
 });
 $('btnRecheck').addEventListener('click', async () => {
   closeActionMenu($('btnRecheck').closest('details'));
-  const urls = all().filter((r) => r.status === 'indeterminado').map((r) => r.url);
+  const urls = all().filter((r) => r.status === 'indeterminado' || isQueuePaused(r)).map((r) => r.url);
   let tabMode = state.settings.tabMode;
   if (!tabMode) {
     tabMode = confirm('Reverificar usando o MODO ABA?\n\nAbre páginas de outras plataformas em abas em segundo plano usando a sua sessão logada. O TikTok sempre usa uma janela dedicada e ativa durante a verificação. Use um perfil de navegador dedicado à investigação.');

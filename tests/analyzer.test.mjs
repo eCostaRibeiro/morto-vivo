@@ -1421,6 +1421,8 @@ test('requires the dedicated TikTok session regardless of the general tab-mode s
   assert.equal(fetchCalls, 0);
   assert.equal(result.via, 'tab');
   assert.equal(result.status, 'vivo');
+  assert.equal(result.info.tiktokDedicatedSession, true);
+  assert.equal(result.info.tabFallback, 'DOM da página lido na sessão TikTok dedicada');
   assert.equal(tabOptions.useTikTokSession, true);
   assert.equal(tabOptions.waitForTikTokProfile, true);
 });
@@ -1442,6 +1444,47 @@ test('does not fall back to fetch when the required TikTok session could not ope
   assert.equal(fetchCalls, 0);
   assert.equal(result.status, 'indeterminado');
   assert.match(result.reason, /sessão de aba dedicada do TikTok/);
+});
+
+test('does not claim the dedicated TikTok session was used when navigation fails', async () => {
+  const result = await checkUrl('https://www.tiktok.com/@creator', {
+    readTab: async () => {
+      throw new Error('chrome.tabs.update: navigation failed');
+    },
+    opts: {
+      tiktokDedicatedSession: true,
+      tiktokSessionReady: true,
+    },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.via, 'fetch');
+  assert.equal(result.info.tiktokDedicatedSession, undefined);
+  assert.equal(result.info.tabAttempted, true);
+  assert.equal(result.info.tabError, 'chrome.tabs.update: navigation failed');
+  assert.equal(result.info.tabFallback, 'Leitura na sessão TikTok dedicada falhou');
+});
+
+test('preserves HTTP 403 detected in the dedicated TikTok tab', async () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = await checkUrl(url, {
+    readTab: async () => ({
+      url,
+      httpStatus: 403,
+      networkCaptureError: 'chrome.debugger.Network.enable: timeout: Network.enable',
+      html: '<title>TikTok</title><p>Forbidden</p>',
+      text: 'Forbidden',
+    }),
+    opts: {
+      tiktokDedicatedSession: true,
+      tiktokSessionReady: true,
+    },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.httpStatus, 403);
+  assert.match(result.info.networkCaptureWarning, /Network\.enable/);
+  assert.match(result.reason, /HTTP 403/);
 });
 
 test('reads TikTok videos in the dedicated session before any oEmbed or fetch request', async () => {

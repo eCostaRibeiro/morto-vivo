@@ -162,6 +162,14 @@ a.chip {
   border-left-color: var(--md-unknown);
   color: var(--md-unknown);
 }
+.chip.manual {
+  border-left-color: var(--md-primary);
+  color: var(--md-primary);
+}
+.chip.pausado {
+  border-left-color: var(--md-timeout-text);
+  color: var(--md-timeout-text);
+}
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -432,6 +440,9 @@ a.chip {
 }
 .result-item.indet {
   border-left-color: var(--md-unknown);
+}
+.result-item.pausado {
+  border-left-color: var(--md-timeout-text);
 }
 .result-favicon {
   width: 32px;

@@ -56,9 +56,9 @@ A verificação do TikTok é serializada e pausada para o restante do lote quand
 fila. Cada lote com URLs TikTok abre uma janela dedicada e focada, usa uma única aba
 exclusivamente para esses endereços e fecha a janela ao terminar o lote;
 não usa navegação anônima nem tenta contornar controles, limites, cookies ou identidade da
-plataforma. Para perfis, a captura aguarda evidências renderizadas por até 45 segundos,
-retornando antes ao encontrar um cabeçalho de perfil, desafio ou a mensagem de conta não
-encontrada. Esse prazo se aplica à leitura do DOM, não altera o timeout global da análise.
+plataforma. Cada URL TikTok tem limite total de 20 segundos, incluindo navegação, leitura
+do DOM e enriquecimento; ao excedê-lo, o resultado fica indeterminado sem retry. Perfis
+retornam antes ao encontrar um cabeçalho, desafio ou mensagem de conta não encontrada.
 Como o navegador usa a sessão existente, uma página Meta/Facebook aberta em modo aba pode
 usar cookies já presentes e produzir efeitos visíveis à conta autenticada. Prefira um perfil
 dedicado e considere as regras de privacidade da plataforma.

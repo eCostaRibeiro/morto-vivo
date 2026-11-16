@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { classifyPage } from '../lib/classification.js';
+import { TIKTOK_QUEUE_INTERVAL_MS } from '../lib/config.js';
 import { detectPlatform } from '../lib/rules.js';
 import { createTikTokQueue, shouldPauseTikTokQueue } from '../lib/tiktokQueue.js';
 
-test('only pauses the TikTok queue for explicit rate limits or TikTok challenges', () => {
+test('pauses the TikTok queue for HTTP 403/429 and ignores other platforms', () => {
   assert.equal(shouldPauseTikTokQueue({
     platform: 'tiktok',
     status: 'indeterminado',
@@ -19,8 +20,22 @@ test('only pauses the TikTok queue for explicit rate limits or TikTok challenges
   }), true);
   assert.equal(shouldPauseTikTokQueue({
     platform: 'tiktok',
+    httpStatus: 403,
+    reason: 'Acesso negado/anti-bot da plataforma (HTTP 403)',
+  }), true);
+  assert.equal(shouldPauseTikTokQueue({
+    platform: 'tiktok',
     reason: 'TikTok apresentou uma tela de espera ou verificação anti-bot',
     tags: ['anti-bot'],
+  }), true);
+  assert.equal(shouldPauseTikTokQueue({
+    platform: 'tiktok',
+    reason: 'Falha ao carregar o endereço TikTok na sessão dedicada',
+  }), true);
+  assert.equal(shouldPauseTikTokQueue({
+    platform: 'tiktok',
+    reason: 'Bloqueio anti-bot/captcha',
+    tags: [],
   }), false);
   assert.equal(shouldPauseTikTokQueue({
     platform: 'tiktok',
@@ -30,7 +45,7 @@ test('only pauses the TikTok queue for explicit rate limits or TikTok challenges
   }), true);
   assert.equal(shouldPauseTikTokQueue({
     platform: 'facebook',
-    httpStatus: 429,
+    httpStatus: 403,
   }), false);
 });
 
@@ -56,6 +71,19 @@ test('a verification phrase in a profile bio does not pause the following TikTok
   const next = await queue.acquire();
   assert.equal(next.proceed, true);
   next.release();
+});
+
+test('waits after a TikTok check completes before starting the next one', async () => {
+  assert.equal(TIKTOK_QUEUE_INTERVAL_MS, 10000);
+  const queue = createTikTokQueue(25);
+  const first = await queue.acquire();
+  first.release();
+  const releasedAt = Date.now();
+
+  const second = await queue.acquire();
+
+  assert.ok(Date.now() - releasedAt >= 20);
+  second.release();
 });
 
 test('serializes TikTok work and pauses queued checks after a challenge', async () => {

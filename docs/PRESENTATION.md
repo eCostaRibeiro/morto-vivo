@@ -14,7 +14,7 @@ description: Arquitetura, recursos, segurança e limites da extensão Morto-Vivo
 # Morto-Vivo
 ## Análise técnica de URLs, anúncios e perfis
 
-**Extensão para Chrome e Vivaldi · versão 2.69**
+**Extensão para Chrome e Vivaldi · versão 2.72**
 
 <!-- NOTAS: Apresentar como ferramenta de triagem baseada em evidências, não como veredito automático. -->
 
@@ -264,12 +264,14 @@ Histórico e classificação manual são mantidos separadamente da evidência au
 ### Perfis
 - Todo lote com URLs TikTok abre uma janela dedicada e focada, inicialmente em `tiktok.com`; a mesma aba é usada exclusivamente para URLs TikTok e a janela fecha ao terminar/cancelar.
 - A janela de resultados é aberta separadamente e sem foco inicial nos lotes com TikTok; uma janela de cada vez pode receber foco.
-- A leitura aguarda evidências renderizadas por até 45 segundos e retorna antes ao encontrar cabeçalho de perfil, desafio ou mensagem explícita de conta não encontrada.
+- Cada URL TikTok tem limite total de 20 segundos, incluindo navegação, leitura e enriquecimento; sem evidência antes do prazo, fica indeterminada e não há retry.
+- A leitura retorna antes ao encontrar cabeçalho de perfil, desafio ou mensagem explícita de conta não encontrada.
 - Sem evidência suficiente no prazo, o perfil permanece indeterminado.
 - Frases em bio/legenda não devem ser confundidas com desafio anti-bot.
 - Mensagem explícita de conta não encontrada resulta em indisponibilidade com confiança média.
 
 ### Vídeos e fotos
+- Navegação, leitura e enriquecimento compartilham o limite total de 20 segundos por URL.
 - oEmbed/estado público são usados quando disponíveis.
 - O ID precisa corresponder ao ID da URL; HTTP 404 isolado não confirma remoção.
 - Links curtos podem ser avaliados pelo destino canônico.

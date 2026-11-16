@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   Semaphore, checkUrlWithRetry, runBatch, cancelledResult, timeoutResult, safeHost,
 } from '../lib/batchRunner.js';
-import { GLOBAL_CONCURRENCY } from '../lib/config.js';
+import { GLOBAL_CONCURRENCY, TIKTOK_CHECK_TIMEOUT_MS } from '../lib/config.js';
 
 /* ---------- Semaphore ---------- */
 
@@ -75,6 +75,23 @@ test('checkUrlWithRetry NÃO repete timeout para TikTok', async () => {
     () => checkUrlWithRetry('https://www.tiktok.com/@someone', {}, undefined, checkUrlFn),
   );
   assert.equal(checkUrlFn.calls(), 1);
+});
+
+test('checkUrlWithRetry enforces the remaining TikTok URL deadline and aborts the attempt', async () => {
+  assert.equal(TIKTOK_CHECK_TIMEOUT_MS, 20000);
+  let aborted = false;
+  const checkUrlFn = (_url, { signal }) => new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => {
+      aborted = true;
+      reject(new DOMException('Aborted', 'AbortError'));
+    }, { once: true });
+  });
+
+  await assert.rejects(
+    () => checkUrlWithRetry('https://www.tiktok.com/@someone', {}, undefined, checkUrlFn, 10),
+    /timeout: checkUrl/,
+  );
+  assert.equal(aborted, true);
 });
 
 test('checkUrlWithRetry NÃO repete timeout para Facebook Marketplace', async () => {
@@ -151,6 +168,52 @@ test('runBatch limita a 1 checagem simultânea para o Facebook Marketplace', asy
 
 /* ---------- runBatch: fila do TikTok ---------- */
 
+test('runBatch prioritizes TikTok profiles in the TikTok queue', async () => {
+  const urls = [
+    'https://www.tiktok.com/@creator/video/123',
+    'https://example.test/page',
+    'https://www.tiktok.com/@profile',
+    'https://www.tiktok.com/@another-profile/',
+  ];
+  const tiktokCalls = [];
+  const { results } = await runBatch(
+    urls,
+    {},
+    {},
+    {
+      checkUrlFn: async (url) => {
+        if (url.includes('/@profile')) {
+          tiktokCalls.push(url);
+          return {
+            status: 'indeterminado',
+            platform: 'tiktok',
+            reason: 'TikTok apresentou uma tela de espera ou verificação anti-bot',
+            confidence: 'alta',
+            tags: ['anti-bot'],
+          };
+        }
+        if (url.includes('/@another-profile/')) {
+          tiktokCalls.push(url);
+          return {
+            status: 'vivo',
+            platform: 'tiktok',
+            reason: 'perfil disponível',
+            confidence: 'alta',
+            tags: [],
+          };
+        }
+        if (url.includes('/video/')) tiktokCalls.push(url);
+        return { url, status: 'vivo', reason: 'ok', confidence: 'alta', tags: [] };
+      },
+      enrichFn: noopEnrich,
+    },
+  );
+
+  assert.deepEqual(tiktokCalls, ['https://www.tiktok.com/@profile']);
+  assert.equal(results.size, urls.length);
+  assert.ok(results.get('https://www.tiktok.com/@creator/video/123').tags.includes('queue-paused'));
+});
+
 test('runBatch pausa a fila do TikTok após HTTP 429 e marca o restante do lote como pausado', async () => {
   const urls = [
     'https://www.tiktok.com/@primeiro',
@@ -179,6 +242,105 @@ test('runBatch pausa a fila do TikTok após HTTP 429 e marca o restante do lote 
   assert.match(tiktokQueuePauseReason, /HTTP 429/);
   const pausedResults = [...results.values()].filter((r) => r.tags.includes('queue-paused'));
   assert.equal(pausedResults.length, urls.length - 1);
+});
+
+test('runBatch pausa a fila do TikTok após um HTTP 403 genérico', async () => {
+  const urls = [
+    'https://www.tiktok.com/@primeiro/video/123',
+    'https://www.tiktok.com/@segundo/video/456',
+  ];
+  let calls = 0;
+  const { results, tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(
+    urls,
+    {},
+    {},
+    {
+      checkUrlFn: async () => {
+        calls++;
+        return {
+          status: 'indeterminado',
+          platform: 'tiktok',
+          httpStatus: 403,
+          reason: 'Acesso negado/anti-bot da plataforma (HTTP 403)',
+          confidence: 'média',
+          tags: [],
+        };
+      },
+      enrichFn: noopEnrich,
+    },
+  );
+
+  assert.equal(results.size, urls.length);
+  assert.equal(calls, 1);
+  assert.equal(tiktokPausedCount, 1);
+  assert.match(tiktokQueuePauseReason, /HTTP 403/);
+});
+
+test('runBatch pauses TikTok URLs immediately when its dedicated tab failed to start', async () => {
+  const urls = [
+    'https://www.tiktok.com/@primeiro',
+    'https://www.tiktok.com/@segundo/video/456',
+  ];
+  let calls = 0;
+  const { results, tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(
+    urls,
+    {
+      opts: {
+        tiktokDedicatedSession: true,
+        tiktokSessionReady: false,
+        tiktokSessionError: 'chrome.debugger.Fetch.enable: timeout',
+      },
+    },
+    {},
+    {
+      checkUrlFn: async () => {
+        calls++;
+        return { status: 'vivo', platform: 'tiktok', reason: 'should not run', confidence: 'alta', tags: [] };
+      },
+      enrichFn: noopEnrich,
+    },
+  );
+
+  assert.equal(calls, 0);
+  assert.equal(results.size, urls.length);
+  assert.equal(tiktokPausedCount, urls.length);
+  assert.match(tiktokQueuePauseReason, /Fetch\.enable: timeout/);
+});
+
+test('runBatch pauses the rest of the batch after an explicit TikTok challenge', async () => {
+  const urls = [
+    'https://www.tiktok.com/@primeiro/video/123',
+    'https://www.tiktok.com/@segundo/video/456',
+  ];
+  let calls = 0;
+  const historyUrls = [];
+  const { results, tiktokPausedCount, tiktokQueuePauseReason } = await runBatch(
+    urls,
+    {},
+    {},
+    {
+      checkUrlFn: async (url) => {
+        calls++;
+        return {
+          url,
+          status: 'indeterminado',
+          platform: 'tiktok',
+          reason: 'TikTok apresentou uma tela de espera ou verificação anti-bot',
+          confidence: 'alta',
+          tags: ['anti-bot'],
+        };
+      },
+      enrichFn: noopEnrich,
+      applyHistory: (_hist, result) => historyUrls.push(result.url),
+    },
+  );
+
+  assert.equal(results.size, urls.length);
+  assert.equal(calls, 1);
+  assert.equal(tiktokPausedCount, 1);
+  assert.match(tiktokQueuePauseReason, /desafio anti-bot explícito/);
+  assert.ok([...results.values()].some((result) => result.tags.includes('queue-paused')));
+  assert.deepEqual(historyUrls, [urls[0]]);
 });
 
 /* ---------- runBatch: cancelamento ---------- */

@@ -94,6 +94,70 @@ test('readInTab installs the debugger network guard and blocks private destinati
   }
 });
 
+test('readInTab continues with the request guard when HTTP status capture times out', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalWarn = console.warn;
+  const updateListeners = new Set();
+  const debuggerListeners = new Set();
+  const commands = [];
+  const warnings = [];
+  let pageUrl = 'about:blank';
+
+  console.warn = (...args) => warnings.push(args);
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 25 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async (_target, method) => {
+        commands.push(method);
+        if (method === 'Network.enable') return new Promise(() => {});
+      },
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async () => [{
+        result: { url: pageUrl, html: '<title>loaded</title>', text: 'loaded', hasPassword: false },
+      }],
+    },
+  };
+
+  try {
+    const result = await readInTab('https://www.tiktok.com/@creator', {
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      settle: 0,
+      timeout: 100,
+      commandTimeout: 20,
+    });
+
+    assert.equal(result.url, 'https://www.tiktok.com/@creator');
+    assert.match(result.networkCaptureError, /Network\.enable/);
+    assert.ok(commands.includes('Fetch.enable'));
+    assert.equal(warnings.length, 1);
+  } finally {
+    console.warn = originalWarn;
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
+  }
+});
+
 test('readInTab continues when the browser does not support download behavior commands', async () => {
   const originalChrome = globalThis.chrome;
   const originalWarn = console.warn;
@@ -220,6 +284,72 @@ test('readInTab retries DOM capture when navigation removes the frame', async ()
   }
 });
 
+test('readInTab retries TikTok video capture when Chrome briefly shows its error page', async () => {
+  const originalChrome = globalThis.chrome;
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let captureAttempts = 0;
+
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 21 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async () => {
+        captureAttempts++;
+        if (captureAttempts === 1) {
+          throw new Error('Frame with ID 0 is showing error page');
+        }
+        return [{
+          result: {
+            url: pageUrl,
+            html: '<title>TikTok</title>',
+            text: 'Public video',
+            hasPassword: false,
+          },
+        }];
+      },
+    },
+  };
+
+  try {
+    const result = await readInTab('https://www.tiktok.com/@creator/video/123456789', {
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      settle: 0,
+      timeout: 100,
+      commandTimeout: 100,
+    });
+
+    assert.equal(result.text, 'Public video');
+    assert.equal(captureAttempts, 2);
+  } finally {
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
+  }
+});
+
 test('readInTab reads TikTok profile DOM after navigation completes', async () => {
   const originalChrome = globalThis.chrome;
   const debuggerListeners = new Set();
@@ -292,6 +422,72 @@ test('readInTab reads TikTok profile DOM after navigation completes', async () =
   } finally {
     clearTimeout(timeout);
     controller.abort();
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
+  }
+});
+
+test('readInTab retries TikTok profile capture when the page temporarily returns no result', async () => {
+  const originalChrome = globalThis.chrome;
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let captureAttempts = 0;
+
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 21 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async () => {
+        captureAttempts++;
+        if (captureAttempts === 1) return [];
+        return [{
+          result: {
+            url: pageUrl,
+            html: '<title>TikTok</title>',
+            text: 'Creator profile and public videos',
+            heading: 'Creator',
+            hasPassword: false,
+          },
+        }];
+      },
+    },
+  };
+
+  try {
+    const result = await readInTab('https://www.tiktok.com/@creator', {
+      resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+      timeout: 100,
+      commandTimeout: 100,
+      waitForTikTokProfile: true,
+      tiktokWait: 1000,
+    });
+
+    assert.equal(result.heading, 'Creator');
+    assert.equal(captureAttempts, 2);
+  } finally {
     if (originalChrome === undefined) delete globalThis.chrome;
     else globalThis.chrome = originalChrome;
   }
@@ -507,6 +703,114 @@ test('readInTab returns a TikTok anti-bot challenge without waiting for the prof
       else delete globalThis.document;
       if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
       else delete globalThis.location;
+    }
+  }
+});
+
+test('readInTab waits for a TikTok profile when the page temporarily says please wait', async () => {
+  const originalChrome = globalThis.chrome;
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const originalMutationObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
+  const debuggerListeners = new Set();
+  const updateListeners = new Set();
+  let pageUrl = 'about:blank';
+  let heading = '';
+  let pageText = 'Please wait...';
+  let watchdog;
+
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: {
+    body: { get innerText() { return pageText; } },
+    documentElement: { outerHTML: '<html><body>Please wait...</body></html>' },
+    head: { outerHTML: '<title>TikTok</title>' },
+    querySelector: () => null,
+    querySelectorAll: () => heading ? [{
+      innerText: heading,
+      getClientRects: () => [{}],
+    }] : [],
+  } });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true,
+    writable: true,
+    value: { href: 'https://www.tiktok.com/@creator', pathname: '/@creator' },
+  });
+  Object.defineProperty(globalThis, 'MutationObserver', {
+    configurable: true,
+    writable: true,
+    value: class {
+      constructor(callback) { this.callback = callback; }
+      observe() {
+        setTimeout(() => {
+          heading = 'Creator';
+          pageText = 'Creator profile and public videos';
+          this.callback();
+        }, 20);
+      }
+      disconnect() {}
+    },
+  });
+  globalThis.chrome = {
+    tabs: {
+      onUpdated: {
+        addListener: (listener) => updateListeners.add(listener),
+        removeListener: (listener) => updateListeners.delete(listener),
+      },
+      create: async () => ({ id: 24 }),
+      update: async (tabId, update) => {
+        pageUrl = update.url;
+        globalThis.location.href = update.url;
+        globalThis.location.pathname = new URL(update.url).pathname;
+        for (const listener of updateListeners) listener(tabId, { status: 'loading' });
+        for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        return { id: tabId, url: pageUrl };
+      },
+      get: async (tabId) => ({ id: tabId, url: pageUrl }),
+      remove: async () => {},
+    },
+    debugger: {
+      onEvent: {
+        addListener: (listener) => debuggerListeners.add(listener),
+        removeListener: (listener) => debuggerListeners.delete(listener),
+      },
+      attach: async () => {},
+      sendCommand: async () => {},
+      detach: async () => {},
+    },
+    scripting: {
+      executeScript: async ({ func, args }) => [{ result: await func(...args) }],
+    },
+  };
+
+  try {
+    const result = await Promise.race([
+      readInTab('https://www.tiktok.com/@creator', {
+        resolveHost: async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
+        timeout: 1000,
+        commandTimeout: 100,
+        reuseTab: true,
+        waitForTikTokProfile: true,
+        tiktokWait: 1000,
+      }),
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error('TikTok profile did not finish loading')), 500);
+      }),
+    ]);
+
+    assert.equal(result.heading, 'Creator');
+    assert.equal(result.text, 'Creator profile and public videos');
+  } finally {
+    clearTimeout(watchdog);
+    try {
+      await closeReusableTab();
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+      if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+      else delete globalThis.document;
+      if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+      else delete globalThis.location;
+      if (originalMutationObserver) Object.defineProperty(globalThis, 'MutationObserver', originalMutationObserver);
+      else delete globalThis.MutationObserver;
     }
   }
 });
@@ -911,7 +1215,7 @@ test('readInTab releases the tab semaphore after cancellation closes the guarded
   }
 });
 
-test('dedicated TikTok session opens home in a focused window and keeps its tab until session close', async () => {
+test('dedicated TikTok session defers navigation until the first URL and keeps its tab until session close', async () => {
   const originalChrome = globalThis.chrome;
   const debuggerListeners = new Set();
   const updateListeners = new Set();
@@ -961,6 +1265,16 @@ test('dedicated TikTok session opens home in a focused window and keeps its tab 
         navigations.push(update.url);
         for (const listener of updateListeners) listener(tabId, { status: 'loading' });
         for (const listener of updateListeners) listener(tabId, { status: 'complete' });
+        if (update.url.endsWith('/@creator')) {
+          await Promise.all([...debuggerListeners].map((listener) => listener(
+            { tabId },
+            'Network.responseReceived',
+            {
+              type: 'XHR',
+              response: { url: 'https://www.tiktok.com/api/post/item_list/', status: 403 },
+            },
+          )));
+        }
         return { id: tabId, windowId: 51, url: pageUrl };
       },
       get: async (tabId) => ({ id: tabId, windowId: 51, url: pageUrl }),
@@ -998,9 +1312,10 @@ test('dedicated TikTok session opens home in a focused window and keeps its tab 
   try {
     const session = await openTikTokSession(
       async () => ({ hasAddress: true, addresses: ['93.184.216.34'] }),
-      { commandTimeout: 100, timeout: 100 },
+      { commandTimeout: 100 },
     );
     assert.deepEqual(session, { windowId: 51, tabId: 52 });
+    assert.deepEqual(navigations, []);
     assert.deepEqual(sessionMessages, [{
       type: 'mv.registerTikTokWindow',
       ownerWindowId: 41,
@@ -1015,10 +1330,8 @@ test('dedicated TikTok session opens home in a focused window and keeps its tab 
     });
 
     assert.equal(result.url, 'https://www.tiktok.com/@creator');
-    assert.deepEqual(navigations, [
-      'https://www.tiktok.com/',
-      'https://www.tiktok.com/@creator',
-    ]);
+    assert.equal(result.httpStatus, 403);
+    assert.deepEqual(navigations, ['https://www.tiktok.com/@creator']);
     assert.deepEqual(removedTabs, []);
     assert.deepEqual(removedWindows, []);
 

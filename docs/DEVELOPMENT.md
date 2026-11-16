@@ -68,9 +68,9 @@ manual no Chrome/Vivaldi.
 - `lib/tabs.js`: ciclo de vida das abas temporárias e da janela TikTok dedicada, além do guard
   de requisições. A sessão TikTok começa com `tiktok.com`, mantém uma aba exclusiva para o
   lote e fecha a janela ao concluir/cancelar; `background.js` a encerra também se a janela de
-  resultados for fechada. Perfis
-  TikTok aguardam o DOM por até 45 segundos, mas retornam antes ao reconhecer cabeçalho de
-  perfil, desafio ou mensagem explícita de conta não encontrada. Páginas Facebook aguardam
+  resultados for fechada. URLs TikTok têm limite total de 20 segundos por endereço, incluindo
+  navegação, leitura e enriquecimento; perfis retornam antes ao reconhecer cabeçalho, desafio
+  ou mensagem explícita de conta não encontrada. Páginas Facebook aguardam
   até 8 segundos por conteúdo renderizado, sem converter indisponibilidade ambígua em remoção.
 - `lib/networkSafety.js` / `lib/dns.js`: validação de URLs, destinos e resolução DNS via
   DoH (Cloudflare com fallback transparente para Google Public DNS).

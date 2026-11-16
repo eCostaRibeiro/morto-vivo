@@ -316,6 +316,40 @@ test('does not treat a TikTok oEmbed 404 as conclusive removal', async () => {
   assert.equal(result.via, 'fetch');
 });
 
+test('confirms a TikTok video when the redirected home feed links to the requested ID', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    finalUrl: 'https://www.tiktok.com/',
+    status: null,
+    via: 'tab',
+    html: '<main><a href="/@creator/video/123456789?lang=en">#ForYou video</a></main>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Conteúdo do TikTok encontrado no feed pelo ID solicitado');
+});
+
+test('explains a TikTok home redirect when no feed link matches the requested ID', () => {
+  const url = 'https://www.tiktok.com/@creator/video/123456789';
+  const result = classifyPage({
+    url,
+    finalUrl: 'https://www.tiktok.com/',
+    status: null,
+    via: 'tab',
+    html: '<main><a href="/@other/video/987654321">#ForYou #Trending video</a></main>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(
+    result.reason,
+    'TikTok redirecionou para a página inicial; ID 123456789 não confirmado no feed',
+  );
+  assert.deepEqual(result.tags, ['redirect-home', 'content-id-unverified']);
+});
+
 test('does not call TikTok video oEmbed for photo posts', async () => {
   const url = 'https://www.tiktok.com/@creator/photo/123456789';
   const state = {
@@ -537,6 +571,108 @@ test('classifies deleted tweet text in DOM as dead', () => {
 
   assert.equal(result.status, 'morto');
   assert.equal(result.reason, 'Post/tweet apagado ou indisponível');
+});
+
+test('classifies an X post restricted to the app as alive', () => {
+  const url = 'https://x.com/usuario/status/123456789';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'tab',
+    html: '<title>X</title><article>Sensitive Content This post is only available in the X app</article>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Post disponível no X; visualização restrita ao aplicativo por conteúdo sensível');
+});
+
+test('does not use the X app-only post notice as evidence on a profile URL', () => {
+  const url = 'https://x.com/usuario';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'tab',
+    html: '<title>X</title><article>Sensitive Content This post is only available in the X app</article>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+});
+
+test('classifies X profiles as alive when public metadata matches the handle and shows post activity', () => {
+  const profiles = [
+    {
+      url: 'https://x.com/Experian_AU',
+      title: 'Experian_Austria (@Experian_AU) on X',
+      text: 'Experian_Austria @Experian_AU 10 posts 16 followers 72 following',
+    },
+    {
+      url: 'https://x.com/guiadoestudante',
+      title: 'Guia do Estudante (@guiadoestudante) on X',
+      text: 'Guia do Estudante @guiadoestudante 44.9K posts 181.7K followers',
+    },
+    {
+      url: 'https://twitter.com/ClonadoCartao',
+      title: 'MALVADAO CCFULL (@ClonadoCartao) on X',
+      text: 'MALVADAO CCFULL @ClonadoCartao 38 posts 42 followers',
+    },
+  ];
+
+  for (const { url, title, text } of profiles) {
+    const result = classifyPage({
+      url,
+      status: 200,
+      via: 'fetch',
+      html: `<meta property="og:title" content="${title}"><main>${text}</main>`,
+      platform: detectPlatform(new URL(url)),
+    });
+
+    assert.equal(result.status, 'vivo', url);
+    assert.equal(result.reason, 'Perfil público encontrado no X', url);
+  }
+});
+
+test('does not classify an X profile as alive when metadata names a different handle', () => {
+  const url = 'https://x.com/usuario';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'fetch',
+    html: '<meta property="og:title" content="Outra Conta (@outra_conta) on X"><main>10 posts</main>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+});
+
+test('classifies an X profile from the posts heading rendered in a browser tab', () => {
+  const url = 'https://x.com/Experian_AU';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'tab',
+    html: '<title>Conversation</title>',
+    renderedText: 'Experian_Austria’s posts',
+    renderedHeading: 'Experian_Austria’s posts',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Perfil público encontrado no X');
+});
+
+test('matches X profile handles from the document title variant ending in slash X', () => {
+  const url = 'https://x.com/Experian_AU';
+  const result = classifyPage({
+    url,
+    status: 200,
+    via: 'fetch',
+    html: '<title>Experian_Austria (@Experian_AU) / X</title><main>10 posts</main>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
 });
 
 test('uses a platform-neutral reason for shared social dead-link patterns', () => {

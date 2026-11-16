@@ -31,7 +31,11 @@ test('stores the latest 100 URL analyses and their result summaries', async () =
     remove: async () => { stored = undefined; },
   }, async () => {
     for (let index = 0; index < MAX_QUERY_HISTORY + 2; index++) {
-      await addQueryHistory([`https://example${index}.com/`], { vivo: index, morto: 1 }, index + 1);
+      await addQueryHistory(
+        [`https://example${index}.com/`],
+        { vivo: index, morto: 1, manual: 2, naoConsultado: 3 },
+        index + 1,
+      );
     }
     const history = await loadQueryHistory();
     assert.equal(history.entries.length, MAX_QUERY_HISTORY);
@@ -40,6 +44,8 @@ test('stores the latest 100 URL analyses and their result summaries', async () =
     assert.equal(history.entries[0].summary.vivo, 101);
     assert.equal(history.entries[0].summary.morto, 1);
     assert.equal(history.entries[0].summary.zumbi, 0);
+    assert.equal(history.entries[0].summary.manual, 2);
+    assert.equal(history.entries[0].summary.naoConsultado, 3);
     assert.deepEqual(history.favorites, []);
   });
 });
@@ -62,7 +68,7 @@ test('ignores malformed history entries and propagates storage failures', async 
     const history = await loadQueryHistory();
     assert.equal(history.entries.length, 1);
     assert.deepEqual(history.entries[0].summary, {
-      vivo: 0, zumbi: 0, morto: 0, indeterminado: 0,
+      vivo: 0, zumbi: 0, morto: 0, indeterminado: 0, manual: 0, naoConsultado: 0,
     });
     await assert.rejects(addQueryHistory(['https://example.com/']), /storage unavailable/);
     await assert.rejects(setQueryFavorite(history.entries[0].id, true), /storage unavailable/);

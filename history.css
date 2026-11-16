@@ -167,6 +167,14 @@
   background: var(--md-info-surface);
   color: var(--md-info-text);
 }
+.history-status.manual {
+  background: var(--md-custom-surface);
+  color: var(--md-custom-text);
+}
+.history-status.naoConsultado {
+  background: var(--md-timeout-surface);
+  color: var(--md-timeout-text);
+}
 .history-urls {
   margin-top: 12px;
   border-top: 1px solid var(--md-category-border);

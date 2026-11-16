@@ -31,6 +31,8 @@ function statusLabel(status) {
     zumbi: 'Zumbis',
     morto: 'Mortos',
     indeterminado: 'Indeterminados',
+    manual: 'Classificações manuais',
+    naoConsultado: 'Não consultados',
   }[status];
 }
 
