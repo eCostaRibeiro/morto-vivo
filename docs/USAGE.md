@@ -169,6 +169,11 @@ resposta. Confirme manualmente resultados importantes antes de tomar decisões.
 
 ### TikTok e Facebook
 
+Perfis Facebook em URLs `profile.php?id=...` podem ser confirmados como **Vivo** quando a
+leitura em aba reconhece a rota, encontra contagem de seguidores e uma seção do perfil.
+Um título genérico “Facebook” não bloqueia essa confirmação; nesses casos, a confiança é
+média. Os detalhes do card mostram quais sinais foram encontrados.
+
 O TikTok pode apresentar uma página de espera ou verificação anti-bot. Ela não é considerada
 prova de que um perfil esteja ativo ou removido. Para vídeos, o Morto-Vivo usa o estado
 público renderizado na página apenas quando o identificador corresponde ao vídeo da URL;

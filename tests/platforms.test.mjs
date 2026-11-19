@@ -139,16 +139,34 @@ test('exposes Facebook profile confirmation signals without storing page text in
     platform: detectPlatform(new URL(url)),
   });
 
-  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.confidence, 'média');
   assert.deepEqual(result.facebookEvidence, {
     profileRoute: true,
     viaTab: true,
     hasFollowerCount: true,
     hasProfileSection: true,
     hasTitleMetadata: true,
+    hasGenericTitle: true,
     hasAcceptedTitle: false,
-    confirmed: false,
+    confirmed: true,
   });
+});
+
+test('does not confirm a Facebook profile when the page title is a login prompt', () => {
+  const url = 'https://www.facebook.com/profile.php?id=61591482313247';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    html: '<title>Entrar no Facebook</title>',
+    renderedText: '9 seguidores · Sobre · Fotos',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.facebookEvidence.hasGenericTitle, false);
+  assert.equal(result.facebookEvidence.confirmed, false);
 });
 
 test('classifies the Facebook unavailable-now notice as a possible takedown', () => {
