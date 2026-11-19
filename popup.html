@@ -30,7 +30,13 @@
   <main class="container">
     <div class="text-field">
       <label for="listaUrls">Cole as URLs (uma por linha — aceita hxxp / [.] de relatórios):</label>
-      <textarea id="listaUrls" aria-describedby="urlHint urlCounter" title="Cole uma URL completa por linha. Esquemas hxxp e hosts defangados com [.] são convertidos; espaços internos são rejeitados." placeholder="https://google.com&#10;hxxps://site-falso[.]top/login&#10;https://www.olx.com.br/d/anuncio-...&#10;https://www.instagram.com/perfil_falso/"></textarea>
+      <div class="paste-row">
+        <textarea id="listaUrls" aria-describedby="urlHint urlCounter" title="Cole uma URL completa por linha. Esquemas hxxp e hosts defangados com [.] são convertidos; espaços internos são rejeitados." placeholder="https://google.com&#10;hxxps://site-falso[.]top/login&#10;https://www.olx.com.br/d/anuncio-...&#10;https://www.instagram.com/perfil_falso/"></textarea>
+        <button class="open-tabs-button" id="btnAbrirAbas" type="button" title="Abre cada URL válida em uma nova aba em segundo plano">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7ZM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7Z"/></svg>
+          <span>Abrir abas</span>
+        </button>
+      </div>
       <p class="hint" id="urlHint">Uma URL por linha. URLs defangadas com hxxp e [.] são aceitas; espaços internos e endereços inválidos são rejeitados.</p>
       <p class="url-counter" id="urlCounter" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>

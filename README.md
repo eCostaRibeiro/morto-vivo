@@ -2,7 +2,10 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.72**, definida em `manifest.json`.
+extensão é **2.73**, definida em `manifest.json`.
+
+A versão **2.73** adiciona ao popup o botão **Abrir abas**, que abre em segundo plano as URLs
+válidas coladas no campo, sem iniciar uma análise.
 
 A versão **2.72** aguarda evidência do perfil TikTok quando a página mostra apenas “Please
 wait...”, em vez de encerrar a consulta como desafio imediatamente. Desafios explícitos

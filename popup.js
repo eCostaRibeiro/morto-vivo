@@ -175,6 +175,52 @@ function showInputSummary(valid, invalid, duplicates) {
   }
 }
 
+$('btnAbrirAbas').addEventListener('click', async () => {
+  const { valid, invalid, duplicates } = parseUrlList($('listaUrls').value);
+  showInputSummary(valid, invalid, duplicates);
+  if (!valid.length) {
+    if (!invalid.length) $('resultados').textContent = 'Por favor, insira pelo menos uma URL.';
+    return;
+  }
+
+  const button = $('btnAbrirAbas');
+  const label = button.querySelector('span');
+  button.disabled = true;
+  label.textContent = 'Abrindo…';
+  let opened = 0;
+  const failures = [];
+  try {
+    for (const url of valid) {
+      try {
+        await chrome.tabs.create({ url, active: false });
+        opened++;
+      } catch (error) {
+        failures.push(`${url} — ${(error && error.message) || error}`);
+      }
+    }
+
+    const status = document.createElement('p');
+    status.className = 'hint';
+    status.setAttribute('role', 'status');
+    if (valid.length === 1) {
+      status.textContent = opened ? '1 aba aberta em segundo plano.' : 'Nenhuma aba foi aberta.';
+    } else {
+      status.textContent = `${opened} de ${valid.length} abas abertas em segundo plano.`;
+    }
+    $('resultados').appendChild(status);
+    if (failures.length) {
+      const box = document.createElement('div');
+      box.className = 'error-box';
+      box.setAttribute('role', 'alert');
+      box.textContent = `Não foi possível abrir ${failures.length} aba${failures.length === 1 ? '' : 's'}:\n${failures.join('\n')}`;
+      $('resultados').appendChild(box);
+    }
+  } finally {
+    button.disabled = false;
+    label.textContent = 'Abrir abas';
+  }
+});
+
 $('btnVerificar').addEventListener('click', async () => {
   if (!(await persist())) return;
   if (importedUrls.length) {
@@ -233,6 +279,9 @@ $('btnImportPageUrls').addEventListener('click', async () => {
   pageImportController = controller;
   importRevision++;
   importedUrls = [];
+  placeVerifyButtonInPasteFlow();
+  $('importPreview').textContent = '';
+  $('importSection').open = false;
   $('btnImportPageUrls').disabled = true;
   $('btnImportPageUrls').textContent = 'Lendo página…';
   $('btnCancelPageImport').hidden = false;
@@ -240,7 +289,6 @@ $('btnImportPageUrls').addEventListener('click', async () => {
   $('listaUrls').disabled = true;
   $('arquivoUrls').disabled = true;
   $('pageImportStatus').textContent = 'Localizando a aba ativa…';
-  $('importSection').open = true;
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -260,12 +308,8 @@ $('btnImportPageUrls').addEventListener('click', async () => {
     if (importedUrls.length) {
       $('listaUrls').value = importedUrls.join('\n');
       updateUrlCounter();
-      $('importPreview').textContent = `${importedUrls.length} URL${importedUrls.length === 1 ? '' : 's'} importada${importedUrls.length === 1 ? '' : 's'} de ${result.pages} página${result.pages === 1 ? '' : 's'} lida${result.pages === 1 ? '' : 's'}. Revise a lista antes de verificar.`;
-      placeVerifyButtonInImportFlow();
     } else {
       importedUrls = [];
-      $('importPreview').textContent = 'Nenhuma URL reconhecida no texto da página.';
-      placeVerifyButtonInPasteFlow();
     }
     $('pageImportStatus').textContent = result.reason
       ? `${result.reason} ${importedUrls.length} URL${importedUrls.length === 1 ? '' : 's'} mantida${importedUrls.length === 1 ? '' : 's'} para revisão.`

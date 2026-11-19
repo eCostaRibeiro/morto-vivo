@@ -14,7 +14,7 @@ description: Arquitetura, recursos, segurança e limites da extensão Morto-Vivo
 # Morto-Vivo
 ## Análise técnica de URLs, anúncios e perfis
 
-**Extensão para Chrome e Vivaldi · versão 2.72**
+**Extensão para Chrome e Vivaldi · versão 2.73**
 
 <!-- NOTAS: Apresentar como ferramenta de triagem baseada em evidências, não como veredito automático. -->
 

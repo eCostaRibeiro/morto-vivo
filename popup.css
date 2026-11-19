@@ -81,8 +81,45 @@ textarea {
   background: transparent;
   color: var(--md-on-surface);
 }
+.paste-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
 #listaUrls {
+  flex: 1;
+  min-width: 0;
+  width: auto;
   height: 110px;
+}
+.open-tabs-button {
+  display: flex;
+  flex: 0 0 78px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid var(--md-primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--md-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.open-tabs-button:hover:not(:disabled) {
+  background: var(--md-surface-container);
+}
+.open-tabs-button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+.open-tabs-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
 }
 .url-counter {
   margin: 3px 0 0;

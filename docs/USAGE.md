@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.72** antes de testar os recursos recentes.
+   **2.73** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -28,8 +28,10 @@ navegador lê os arquivos diretamente desse local.
 2. Cole as URLs, uma por linha. A entrada aceita URLs defangadas comuns, como `hxxps` e
    `[.]`; URLs com espaços internos, inválidas e duplicadas são ignoradas, sem alterar
    silenciosamente o endereço digitado.
-3. Clique em **Verificar Status**. A página de resultados abre em uma nova aba e atualiza
-   o progresso à medida que a fila termina.
+3. Use **Abrir abas** ao lado do campo para abrir as URLs válidas em novas abas em segundo
+   plano, sem iniciar uma análise. URLs inválidas são ignoradas e duplicatas removidas.
+4. Para analisar a lista, clique em **Verificar Status**. A página de resultados abre em
+   uma nova aba e atualiza o progresso à medida que a fila termina.
 
 Cada lote aceita até 200 URLs únicas e válidas. Se a entrada exceder o limite, a extensão
 avisa e processa somente as primeiras 200. A análise é feita em etapas concorrentes para
@@ -56,8 +58,9 @@ da mesma origem na própria aba ativa até o fim, removendo duplicatas; a aba pe
 na última página lida. A navegação pode parar se o site não
 atualizar, repetir uma página ou usar um controle que não possa ser identificado com
 segurança. O conteúdo é preenchido para revisão no campo de URLs; a análise só começa
-quando você clicar em **Verificar Status**. A coleta não tem limite fixo de páginas ou
-URLs; listas muito grandes podem levar tempo e ocupar o armazenamento local.
+quando você clicar em **Verificar Status**. A seção de importação TXT permanece recolhida
+e o botão de análise fica na posição principal do popup. A coleta não tem limite fixo de
+páginas ou URLs; listas muito grandes podem levar tempo e ocupar o armazenamento local.
 
 <figure>
   <img src="assets/presentation/popup.png" alt="Popup com três URLs fictícias, contador, botão de verificação, importação TXT e opções recolhidas" width="420">
