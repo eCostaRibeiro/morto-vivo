@@ -128,6 +128,29 @@ test('keeps Facebook unavailable content indeterminate instead of treating priva
   assert.deepEqual(result.tags, ['content-unavailable']);
 });
 
+test('exposes Facebook profile confirmation signals without storing page text in diagnostics', () => {
+  const url = 'https://www.facebook.com/profile.php?id=61591482313247';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    html: '<title>Facebook</title>',
+    renderedText: '9 seguidores · Sobre · Fotos',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.deepEqual(result.facebookEvidence, {
+    profileRoute: true,
+    viaTab: true,
+    hasFollowerCount: true,
+    hasProfileSection: true,
+    hasTitleMetadata: true,
+    hasAcceptedTitle: false,
+    confirmed: false,
+  });
+});
+
 test('classifies the Facebook unavailable-now notice as a possible takedown', () => {
   const url = 'https://www.facebook.com/profile.php?id=61594203218424';
   const result = classifyPage({

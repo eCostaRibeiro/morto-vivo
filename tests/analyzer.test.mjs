@@ -1730,6 +1730,8 @@ test('does not invent a Facebook profile title from a numeric profile ID', async
     opts: { tabMode: true, timeoutMs: 50 },
   });
   assert.equal(result.title, '(16) Facebook');
+  assert.equal(result.info.facebookEvidence.profileRoute, true);
+  assert.equal(result.info.facebookEvidence.viaTab, true);
 });
 
 test('waits for Facebook rendered unavailable content and reports a possible takedown', async () => {

@@ -164,7 +164,7 @@ resposta. Confirme manualmente resultados importantes antes de tomar decisões.
 
 <figure>
   <img src="assets/presentation/results-details.png" alt="Categorias Mortos e Indeterminados com exemplos fictícios de HTTP 404 e autenticação HTTP 401" width="900">
-  <figcaption>Exemplos das categorias Morto e Indeterminado. O status vem acompanhado do motivo; abra **Mais → Detalhes** no cartão para consultar evidências completas.</figcaption>
+  <figcaption>Exemplos das categorias Morto e Indeterminado. O status vem acompanhado do motivo; abra **Mais → Detalhes** no cartão para consultar evidências completas. Em perfis do Facebook, os detalhes também mostram os indicadores usados para confirmar o perfil, sem expor o HTML completo.</figcaption>
 </figure>
 
 ### TikTok e Facebook
