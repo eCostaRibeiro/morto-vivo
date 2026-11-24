@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.73** antes de testar os recursos recentes.
+   **2.74** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.

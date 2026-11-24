@@ -1,7 +1,11 @@
 [data-mv-history-badge] {
+  box-sizing: border-box;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
+  width: 9em;
+  height: 1.75em;
   margin-inline-end: 0.4em;
   padding: 0.05em 0.45em;
   border: 1px solid currentColor;

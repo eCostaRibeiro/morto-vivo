@@ -239,6 +239,7 @@ test('applies built-in rules from the CSV and lets user rules take precedence', 
     'Este conteúdo não está disponível no momento Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.',
     'Sorry, something has gone wrong rendering this viz. Please refresh and try again.',
     'Este classificado não está mais disponível.',
+    'This package has been deleted from the gallery. It is no longer available for install/restore.',
   ];
 
   for (const phrase of phrases) {
