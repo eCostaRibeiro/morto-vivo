@@ -118,6 +118,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const SETTINGS_KEY = 'mv_settings';
 
+function isClickUpUrl(value) {
+  try {
+    const host = new URL(value).hostname.toLowerCase().replace(/\.$/, '');
+    return host === 'clickup.com' || host.endsWith('.clickup.com');
+  } catch {
+    return false;
+  }
+}
+
 function isWebTab(tab) {
   return tab?.id !== undefined && /^https?:\/\//i.test(tab.url || '');
 }
@@ -128,7 +137,7 @@ async function markerEnabled() {
 }
 
 async function setTabMarker(tab, enabled) {
-  if (!isWebTab(tab)) return;
+  if (!isWebTab(tab) || isClickUpUrl(tab.url)) return;
   const target = { tabId: tab.id };
   try {
     if (enabled) {

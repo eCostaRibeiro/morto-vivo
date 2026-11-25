@@ -3,9 +3,12 @@ import test from 'node:test';
 
 import { collectUrlsFromTab, extractUrlsFromText } from '../lib/pageUrlImport.js';
 
-async function withChromeScripting(executeScript, run) {
+async function withChromeScripting(executeScript, run, tabUrl = 'https://intel.example/') {
   const originalChrome = globalThis.chrome;
-  globalThis.chrome = { scripting: { executeScript } };
+  globalThis.chrome = {
+    scripting: { executeScript },
+    tabs: { get: async () => ({ url: typeof tabUrl === 'function' ? tabUrl() : tabUrl }) },
+  };
   try {
     await run();
   } finally {
@@ -68,6 +71,41 @@ test('collects and deduplicates displayed URLs across paginated pages', async ()
     });
     assert.deepEqual(progress, [{ pages: 1, urls: 1 }, { pages: 2, urls: 2 }]);
   });
+});
+
+test('does not execute page scripts or read content from ClickUp tabs', async () => {
+  let scriptCalls = 0;
+  await withChromeScripting(async () => {
+    scriptCalls++;
+    return [{ result: {} }];
+  }, async () => {
+    await assert.rejects(
+      collectUrlsFromTab(12),
+      /ClickUp bloqueada por política local; nenhum conteúdo foi lido/,
+    );
+    assert.equal(scriptCalls, 0);
+  }, 'https://app.clickup.com/t/abc123');
+});
+
+test('stops importing if the active tab navigates to ClickUp between page reads', async () => {
+  let currentUrl = 'https://intel.example/';
+  let scriptCalls = 0;
+  await withChromeScripting(async () => {
+    scriptCalls++;
+    currentUrl = 'https://app.clickup.com/t/abc123';
+    return [{
+      result: { text: 'vivo.com', fingerprint: 'page-1', origin: 'https://intel.example' },
+    }];
+  }, async () => {
+    const result = await collectUrlsFromTab(12);
+    assert.deepEqual(result, {
+      urls: ['https://vivo.com'],
+      pages: 1,
+      complete: false,
+      reason: 'Leitura de páginas do ClickUp bloqueada por política local; nenhum conteúdo foi lido.',
+    });
+    assert.equal(scriptCalls, 1);
+  }, () => currentUrl);
 });
 
 test('reports incomplete collection when pagination exists but no next control is recognized', async () => {

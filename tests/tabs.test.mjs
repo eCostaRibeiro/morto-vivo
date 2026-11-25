@@ -5,6 +5,34 @@ import {
   closeReusableTab, closeTikTokSession, openTikTokSession, readInTab,
 } from '../lib/tabs.js';
 
+test('readInTab blocks ClickUp before creating or navigating a browser tab', async () => {
+  const originalChrome = globalThis.chrome;
+  let tabCreations = 0;
+  globalThis.chrome = {
+    tabs: {
+      create: async () => {
+        tabCreations++;
+        return { id: 1 };
+      },
+    },
+  };
+
+  try {
+    await assert.rejects(
+      readInTab('https://app.clickup.com/t/abc123', {
+        resolveHost: async () => {
+          throw new Error('ClickUp DNS must not be queried');
+        },
+      }),
+      /ClickUp bloqueados por política local/,
+    );
+    assert.equal(tabCreations, 0);
+  } finally {
+    if (originalChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = originalChrome;
+  }
+});
+
 test('readInTab installs the debugger network guard and blocks private destinations', async () => {
   const originalChrome = globalThis.chrome;
   const commands = [];

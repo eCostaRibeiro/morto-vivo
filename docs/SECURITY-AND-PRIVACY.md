@@ -27,6 +27,11 @@ conteúdo da página para fora do navegador. Se encontrar paginação identific�
 no controle de próxima página da mesma origem para continuar a leitura, deixando a aba na
 última página percorrida. Revise as URLs importadas antes de iniciar as verificações.
 
+O Morto-Vivo bloqueia `clickup.com` e todos os seus subdomínios por política local. Não faz
+consultas DNS nem requisições para esses hosts, não os abre para análise nem em ações de
+abertura de URLs, não lê conteúdo nem marca links em páginas do ClickUp. A política também
+se aplica a redirecionamentos, ao botão **Abrir abas** e às ações de abrir resultados.
+
 ## Tráfego de rede
 
 Para verificar uma URL, a extensão faz requisições ao destino fornecido e pode consultar

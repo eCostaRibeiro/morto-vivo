@@ -25,6 +25,7 @@ import { FETCH_PAGE_TIMEOUT_MS } from './lib/config.js';
 import { runBatch } from './lib/batchRunner.js';
 import { addQueryHistory } from './lib/queryHistory.js';
 import { detectPlatform } from './lib/rules.js';
+import { isClickUpUrl } from './lib/networkSafety.js';
 import { installUiScaleControl } from './lib/uiScale.js';
 
 const $ = (id) => document.getElementById(id);
@@ -300,12 +301,15 @@ $('bulkClassification').addEventListener('change', async (event) => {
 });
 
 function openUrls(urls) {
-  if (urls.length > 10 && !confirm(`Abrir ${urls.length} abas? Algumas podem ser páginas maliciosas.`)) return;
-  urls.forEach((url) => {
+  const allowedUrls = urls.filter((url) => !isClickUpUrl(url));
+  const blockedCount = urls.length - allowedUrls.length;
+  if (allowedUrls.length > 10 && !confirm(`Abrir ${allowedUrls.length} abas? Algumas podem ser páginas maliciosas.`)) return;
+  allowedUrls.forEach((url) => {
     state.opened.add(url);
     window.open(url, '_blank', 'noopener');
   });
   scheduleRender();
+  if (blockedCount) toast(`${blockedCount} link${blockedCount === 1 ? '' : 's'} do ClickUp bloqueado${blockedCount === 1 ? '' : 's'} pela política local.`);
 }
 
 let toastTimer = 0;

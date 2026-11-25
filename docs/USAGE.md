@@ -30,6 +30,7 @@ navegador lê os arquivos diretamente desse local.
    silenciosamente o endereço digitado.
 3. Use **Abrir abas** ao lado do campo para abrir as URLs válidas em novas abas em segundo
    plano, sem iniciar uma análise. URLs inválidas são ignoradas e duplicatas removidas.
+   `clickup.com` e seus subdomínios são bloqueados pela política local e não são abertos.
 4. Para analisar a lista, clique em **Verificar Status**. A página de resultados abre em
    uma nova aba e atualiza o progresso à medida que a fila termina.
 
@@ -61,6 +62,7 @@ segurança. O conteúdo é preenchido para revisão no campo de URLs; a análise
 quando você clicar em **Verificar Status**. A seção de importação TXT permanece recolhida
 e o botão de análise fica na posição principal do popup. A coleta não tem limite fixo de
 páginas ou URLs; listas muito grandes podem levar tempo e ocupar o armazenamento local.
+Páginas em `clickup.com` ou em seus subdomínios não são lidas.
 
 <figure>
   <img src="assets/presentation/popup.png" alt="Popup com três URLs fictícias, contador, botão de verificação, importação TXT e opções recolhidas" width="420">
@@ -228,12 +230,14 @@ Frases de verificação em bios ou legendas de perfis não pausam a fila.
 
 O Facebook pode retornar login, redirecionamentos ou respostas que não provam remoção. O
 modo aba pode fornecer conteúdo renderizado adicional e aguarda até 8 segundos por texto de
-perfil, login ou indisponibilidade antes de capturar a página. A mensagem “Este conteúdo não
-está disponível no momento” é classificada como **Morto**, com confiança média e indicação
-de possível takedown: o link não está acessível publicamente, mas a mensagem não confirma
-que houve exclusão, pois também pode refletir privacidade ou mudança de público. Outros
-sinais genéricos de login ou restrição permanecem indeterminados. Redirecionamentos para
-outro domínio também ficam indeterminados até que o destino seja confirmado.
+perfil, login ou indisponibilidade antes de capturar a página. Rotas de perfil com nome,
+`/people/...` e `profile.php?id=...` são reconhecidas como perfis. Uma indicação de perfil
+público — como nome/heading junto de seções do perfil, ou metadados e atividade visível —
+tem prioridade sobre avisos genéricos de conteúdo indisponível. Esse aviso, sozinho, deixa
+um perfil **Indeterminado**, pois também pode refletir privacidade ou mudança de público.
+Em links de conteúdo, a mensagem pode indicar possível takedown, mas não confirma exclusão.
+Outros sinais genéricos de login ou restrição permanecem indeterminados. Redirecionamentos
+para outro domínio também ficam indeterminados até que o destino seja confirmado.
 
 ### Shopee
 

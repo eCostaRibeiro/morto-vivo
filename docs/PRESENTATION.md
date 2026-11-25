@@ -308,7 +308,8 @@ Sinais fortes de parking/venda são apresentados separadamente de takedown. Men�
 | Recurso e exemplo de entrada | Evidência capturada | Saída típica |
 |---|---|---|
 | Perfil do Facebook (`facebook.com/profile.php?id=<ID>`) | Mensagem explícita de perfil removido/inexistente | **Morto**, confiança média |
-| Perfil do Facebook | “Este conteúdo não está disponível no momento” | **Morto**, confiança média; possível takedown, exclusão não confirmada |
+| Perfil do Facebook | Aviso genérico “conteúdo não está disponível” sem sinal de perfil público | **Indeterminado**; privacidade e mudança de público não provam remoção |
+| Conteúdo do Facebook | “Este conteúdo não está disponível no momento” | **Morto**, confiança média; possível takedown, exclusão não confirmada |
 | Perfil do Facebook | Login, restrição ou outra mensagem genérica de indisponibilidade | **Indeterminado** |
 | Biblioteca de Anúncios (`facebook.com/ads/library/?id=<ID>`) | Estado Ativo associado ao mesmo ID | **Vivo**, confiança alta |
 | Biblioteca de Anúncios | Estado Inativo, Pausado ou Encerrado associado ao mesmo ID | **Zumbi**, confiança alta |

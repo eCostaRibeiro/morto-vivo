@@ -26,6 +26,7 @@ class MockElement {
     this.rect = { top: 0, right: 0 };
     this.lastScroll = null;
     this.computedOverflowY = 'visible';
+    this.visible = true;
     this.type = '';
   }
 
@@ -128,6 +129,8 @@ class MockElement {
 
   getBoundingClientRect() { return { ...this.rect, left: 0, width: 100, height: this.clientHeight }; }
 
+  getClientRects() { return this.visible ? [{}] : []; }
+
   scrollTo(options) {
     this.lastScroll = options;
     this.scrollTop = options.top;
@@ -155,11 +158,12 @@ async function createHarness(linkSpecs, history, options = {}) {
     return element;
   }
 
-  function makeLink({ href, text = '', top = 0 }, parent = body) {
+  function makeLink({ href, text = '', top = 0, visible = true }, parent = body) {
     const link = new MockElement('a');
     link.href = href;
     link.textContent = text;
     link.rect.top = top;
+    link.visible = visible;
     elements.push(link);
     parent.appendChild(link);
     return link;
@@ -472,6 +476,23 @@ test('marks ThreatX results seen on another pagination page and resets after a f
   }]);
   harness.flushTimers();
   assert.equal(badgeText(newSearchLink, 'data-mv-duplicate-badge'), null);
+});
+
+test('does not count hidden responsive copies as duplicate ThreatX results', async () => {
+  const resultUrl = 'https://facebook.com/marketplace/item/123456789/';
+  const harness = await createHarness([
+    { href: resultUrl, visible: false },
+    { href: resultUrl },
+  ], {
+    [resultUrl]: { last: { status: 'vivo' } },
+  }, {
+    threatX: true,
+    url: 'https://cyber.threatx.com.br/cyber-operations/monitoring/fake-pages?page=1',
+    pageNumber: 1,
+  });
+
+  assert.equal(badgeText(harness.links[0], 'data-mv-duplicate-badge'), null);
+  assert.equal(badgeText(harness.links[1], 'data-mv-duplicate-badge'), null);
 });
 
 test('shows clickable scrollbar markers only for dead ThreatX results', async () => {

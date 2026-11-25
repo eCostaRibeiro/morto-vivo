@@ -496,6 +496,34 @@ test('does not treat Facebook HTTP 404 as proof that content was removed', () =>
   assert.match(result.reason, /não confirma que o perfil\/conteúdo foi removido/);
 });
 
+test('blocks ClickUp analysis without DNS, HTTP requests, or tab navigation', async () => {
+  let dnsCalls = 0;
+  let fetchCalls = 0;
+  let tabReads = 0;
+  const result = await checkUrl('https://app.clickup.com/t/abc123', {
+    doh: async () => {
+      dnsCalls++;
+      return { hasAddress: true, addresses: ['93.184.216.34'] };
+    },
+    fetchFn: async () => {
+      fetchCalls++;
+      return new Response('<title>ClickUp</title>', { status: 200 });
+    },
+    readTab: async () => {
+      tabReads++;
+      return { url: 'https://app.clickup.com/t/abc123', text: 'Task', hasPassword: false };
+    },
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(result.status, 'indeterminado');
+  assert.match(result.reason, /ClickUp bloqueados por política local/);
+  assert.deepEqual(result.tags, ['seguranca']);
+  assert.equal(dnsCalls, 0);
+  assert.equal(fetchCalls, 0);
+  assert.equal(tabReads, 0);
+});
+
 test('classifies a TikTok profile with a rendered profile heading as alive', () => {
   const url = 'https://www.tiktok.com/@j10002032';
   const result = classifyPage({
@@ -1735,7 +1763,7 @@ test('does not invent a Facebook profile title from a numeric profile ID', async
   assert.equal(result.info.facebookEvidence.viaTab, true);
 });
 
-test('waits for Facebook rendered unavailable content and reports a possible takedown', async () => {
+test('keeps Facebook profile unavailable notices indeterminate after rendered-page reading', async () => {
   const url = 'https://facebook.com/profile.php?id=61594203218424';
   const message = 'Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.';
   let tabOptions;
@@ -1760,10 +1788,31 @@ test('waits for Facebook rendered unavailable content and reports a possible tak
 
   assert.equal(tabOptions.waitForFacebookContent, true);
   assert.equal(tabOptions.facebookWait, 8000);
-  assert.equal(result.status, 'morto');
-  assert.equal(result.reason, 'Conteúdo indisponível publicamente no Facebook (possível takedown; remoção não confirmada)');
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.reason, 'Facebook não disponibiliza o perfil publicamente; isso não confirma remoção');
   assert.equal(result.confidence, 'média');
-  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+  assert.deepEqual(result.tags, ['content-unavailable']);
+});
+
+test('classifies the active Facebook vanity profile gabyvivofibra as alive', async () => {
+  const url = 'https://www.facebook.com/gabyvivofibra';
+  const result = await checkUrl(url, {
+    doh: async () => ({ rcode: 0, hasAddress: true, addresses: ['157.240.1.35'] }),
+    fetchFn: async () => ({ type: 'opaqueredirect', status: 0, headers: new Headers() }),
+    readTab: async () => ({
+      url,
+      heading: 'Gaby Vivo Fibra',
+      html: '<title>(16) Facebook</title>',
+      text: 'Gaby Vivo Fibra · Intro · Posts · Photos · About · Este conteúdo não está disponível no momento.',
+      hasPassword: false,
+    }),
+    opts: { tabMode: true, timeoutMs: 50 },
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Perfil público encontrado');
+  assert.equal(result.info.facebookEvidence.profileRoute, true);
+  assert.equal(result.info.facebookEvidence.confirmed, true);
 });
 
 test('reports why opaque-redirect fallback failed when tab reading errors', async () => {

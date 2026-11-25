@@ -1,6 +1,15 @@
 (() => {
   const instanceKey = '__mortoVivoPageMarker';
   const existing = globalThis[instanceKey];
+  try {
+    const host = new URL(location.href).hostname.toLowerCase().replace(/\.$/, '');
+    if (host === 'clickup.com' || host.endsWith('.clickup.com')) {
+      existing?.deactivate?.();
+      return;
+    }
+  } catch {
+    return;
+  }
   if (existing) {
     existing.refresh();
     return;
@@ -128,7 +137,9 @@
     while (resultContainer && resultContainer !== document.body) {
       resultLinks = [...resultContainer.querySelectorAll('a[href]')].filter((link) => {
         try {
-          return new URL(link.href).origin !== url.origin && Boolean(urlKey(link.href));
+          return link.getClientRects().length > 0
+            && new URL(link.href).origin !== url.origin
+            && Boolean(urlKey(link.href));
         } catch {
           return false;
         }
@@ -438,7 +449,7 @@
     }
   }
 
-  globalThis[instanceKey] = { refresh };
+  globalThis[instanceKey] = { refresh, deactivate };
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') return;
     if (changes.mv_settings || changes.mv_history || changes.mv_manual_classifications) refresh();

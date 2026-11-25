@@ -4,6 +4,7 @@ import { installButtonSoundFeedback } from './lib/audioFeedback.js';
 import { MAX_IMPORTED_URLS, MAX_IMPORT_FILE_BYTES, parseUrlList } from './lib/urlList.js';
 import { discardImportedBatch, saveImportedBatch } from './lib/importedBatch.js';
 import { detectPlatform } from './lib/rules.js';
+import { isClickUpUrl } from './lib/networkSafety.js';
 import { installUiScaleControl } from './lib/uiScale.js';
 import { collectUrlsFromTab } from './lib/pageUrlImport.js';
 
@@ -191,6 +192,10 @@ $('btnAbrirAbas').addEventListener('click', async () => {
   const failures = [];
   try {
     for (const url of valid) {
+      if (isClickUpUrl(url)) {
+        failures.push(`${url} — bloqueado por política local; nenhuma aba foi aberta.`);
+        continue;
+      }
       try {
         await chrome.tabs.create({ url, active: false });
         opened++;
@@ -295,6 +300,9 @@ $('btnImportPageUrls').addEventListener('click', async () => {
     if (!Number.isInteger(tab?.id)) throw new Error('Não foi possível identificar a aba ativa.');
     if (!/^https?:\/\//i.test(tab.url || '')) {
       throw new Error('A aba ativa não é uma página HTTP/HTTPS legível pela extensão.');
+    }
+    if (isClickUpUrl(tab.url)) {
+      throw new Error('A leitura de páginas do ClickUp está bloqueada por política local.');
     }
 
     const result = await collectUrlsFromTab(tab.id, {

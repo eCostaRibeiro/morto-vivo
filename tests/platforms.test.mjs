@@ -169,7 +169,7 @@ test('does not confirm a Facebook profile when the page title is a login prompt'
   assert.equal(result.facebookEvidence.confirmed, false);
 });
 
-test('classifies the Facebook unavailable-now notice as a possible takedown', () => {
+test('keeps Facebook profile unavailable-now notices indeterminate', () => {
   const url = 'https://www.facebook.com/profile.php?id=61594203218424';
   const result = classifyPage({
     url,
@@ -179,14 +179,14 @@ test('classifies the Facebook unavailable-now notice as a possible takedown', ()
     platform: detectPlatform(new URL(url)),
   });
 
-  assert.equal(result.status, 'morto');
-  assert.equal(result.reason, 'Conteúdo indisponível publicamente no Facebook (possível takedown; remoção não confirmada)');
+  assert.equal(result.status, 'indeterminado');
+  assert.equal(result.reason, 'Facebook não disponibiliza o perfil publicamente; isso não confirma remoção');
   assert.equal(result.confidence, 'média');
-  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+  assert.deepEqual(result.tags, ['content-unavailable']);
 });
 
-test('recognizes the English Facebook unavailable-now notice as a possible takedown', () => {
-  const url = 'https://www.facebook.com/profile.php?id=123';
+test('recognizes the English Facebook unavailable-now notice on content as a possible takedown', () => {
+  const url = 'https://www.facebook.com/example.page/posts/123';
   const result = classifyPage({
     url,
     status: null,
@@ -198,6 +198,24 @@ test('recognizes the English Facebook unavailable-now notice as a possible taked
   assert.equal(result.status, 'morto');
   assert.equal(result.confidence, 'média');
   assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+});
+
+test('recognizes an active vanity Facebook profile despite an unrelated unavailable-content notice', () => {
+  const url = 'https://www.facebook.com/gabyvivofibra';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    renderedHeading: 'Gaby Vivo Fibra',
+    renderedText: 'Gaby Vivo Fibra · Intro · Posts · Photos · About · Este conteúdo não está disponível no momento.',
+    html: '<title>(16) Facebook</title>',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Perfil público encontrado');
+  assert.equal(result.facebookEvidence.profileRoute, true);
+  assert.equal(result.facebookEvidence.confirmed, true);
 });
 
 test('keeps restricted Facebook profile visibility indeterminate', () => {

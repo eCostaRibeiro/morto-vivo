@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  assertPublicHttpUrl, fetchPublicResource, isPublicIpAddress, NetworkSafetyError,
+  assertPublicHttpUrl, fetchPublicResource, isClickUpUrl, isPublicIpAddress, NetworkSafetyError,
 } from '../lib/networkSafety.js';
 
 test('allows public IPs and rejects private, loopback, and reserved addresses', () => {
@@ -25,6 +25,29 @@ test('requires a DNS result containing only public addresses', async () => {
   await assert.rejects(assertPublicHttpUrl('https://example.com/'), NetworkSafetyError);
 });
 
+test('blocks ClickUp hosts before DNS resolution or network requests', async () => {
+  for (const url of [
+    'https://clickup.com/',
+    'https://app.clickup.com/',
+    'https://api.clickup.com/v2/',
+    'https://sub.app.clickup.com/',
+  ]) {
+    assert.equal(isClickUpUrl(url), true);
+  }
+  assert.equal(isClickUpUrl('https://notclickup.com/'), false);
+  assert.equal(isClickUpUrl('https://clickup.com.example.org/'), false);
+
+  let dnsCalls = 0;
+  await assert.rejects(
+    assertPublicHttpUrl('https://app.clickup.com/', async () => {
+      dnsCalls++;
+      return { hasAddress: true, addresses: ['93.184.216.34'] };
+    }),
+    (error) => error instanceof NetworkSafetyError && error.kind === 'blocked-domain',
+  );
+  assert.equal(dnsCalls, 0);
+});
+
 test('validates each redirect before making the next request', async () => {
   let requests = 0;
   await assert.rejects(fetchPublicResource('https://example.com/', {}, {
@@ -39,6 +62,27 @@ test('validates each redirect before making the next request', async () => {
     },
   }), NetworkSafetyError);
   assert.equal(requests, 1);
+});
+
+test('blocks a redirect to ClickUp before resolving or requesting its host', async () => {
+  let requests = 0;
+  const resolvedHosts = [];
+  await assert.rejects(fetchPublicResource('https://example.com/', {}, {
+    resolveHost: async (host) => {
+      resolvedHosts.push(host);
+      return { hasAddress: true, addresses: ['93.184.216.34'] };
+    },
+    fetchFn: async () => {
+      requests++;
+      return {
+        status: 302,
+        type: 'basic',
+        headers: new Headers({ location: 'https://app.clickup.com/' }),
+      };
+    },
+  }), (error) => error instanceof NetworkSafetyError && error.kind === 'blocked-domain');
+  assert.equal(requests, 1);
+  assert.deepEqual(resolvedHosts, ['example.com']);
 });
 
 test('identifies opaque redirects separately from blocked destinations', async () => {
