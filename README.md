@@ -2,10 +2,12 @@
 
 Extensão para Chrome e Vivaldi para analisar listas de URLs e classificar cada endereço como **Vivo**, **Zumbi**,
 **Morto** ou **Indeterminado**, com o motivo e as evidências disponíveis. A versão atual da
-extensão é **2.74**, definida em `manifest.json`.
+extensão é **2.75**, definida em `manifest.json`.
 
-A versão **2.74** mantém a largura das marcas de URLs verificadas e ajusta sua altura à linha
-do texto.
+A versão **2.75** identifica URLs classificadas repetidas entre páginas da mesma busca
+paginada no ThreatX. As marcas de URLs verificadas mantêm largura fixa e altura alinhada à
+linha do texto; duplicatas também são sinalizadas na página atual. Nas listas paginadas do
+ThreatX, marcas na barra de rolagem levam aos resultados classificados como Morto.
 
 A versão **2.73** adiciona ao popup o botão **Abrir abas**, que abre em segundo plano as URLs
 válidas coladas no campo, sem iniciar uma análise.

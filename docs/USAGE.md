@@ -17,7 +17,7 @@ específicos de navegadores Chromium.
 4. Para instalar, selecione **Carregar sem compactação** e escolha a pasta que contém
    `manifest.json`. Para atualizar uma cópia já carregada, use o botão **Recarregar** da
    extensão após substituir os arquivos; confirme que a tela de resultados mostra a versão
-   **2.74** antes de testar os recursos recentes.
+   **2.75** antes de testar os recursos recentes.
 
 Não mova nem apague a pasta depois de carregá-la. Como a instalação é sem compactação, o
 navegador lê os arquivos diretamente desse local.
@@ -303,9 +303,18 @@ Ative **Marcar URLs verificadas nas páginas** para mostrar a classificação ma
 início dos links reconhecidos em páginas HTTP/HTTPS, inclusive nas abas que já estavam abertas.
 A marca fica antes do texto da URL para continuar visível quando o endereço é resumido ou truncado.
 A correspondência usa o endereço completo normalizado; o status mostrado considera uma
-classificação manual quando houver uma. A marcação acompanha links adicionados dinamicamente
-e é atualizada quando o histórico muda. Ela não faz novas consultas nem envia conteúdo da
-página. A opção começa desativada e pode ser desligada no popup para remover as marcas.
+classificação manual quando houver uma. Se uma URL classificada aparecer mais de uma vez na
+página, cada ocorrência recebe também a etiqueta **DUPLICADA ×N**, com o total de links iguais
+na página atual. A comparação não remove parâmetros de consulta nem tenta inferir se URLs
+diferentes levam ao mesmo conteúdo. Nas listas paginadas do ThreatX, a etiqueta
+simples **DUPLICADA** também aparece quando a mesma URL classificada foi vista em outra página
+da mesma busca e dos mesmos filtros. Essa comparação vale enquanto a aba permanece aberta e
+reinicia quando a busca, os filtros ou a categoria mudam. A marcação acompanha links
+adicionados dinamicamente e é atualizada quando o histórico muda. Ela não faz novas consultas
+nem envia conteúdo da página. A opção começa desativada e pode ser desligada no popup para
+remover as marcas. Nas listas paginadas do ThreatX, uma régua junto à barra de rolagem também
+indica a posição dos resultados classificados como **Morto** na página carregada; clique em
+uma marca vermelha para rolar até o resultado correspondente.
 
 ### Regras de classificação personalizadas
 

@@ -53,6 +53,9 @@ manual no Chrome/Vivaldi.
   filtros, seleção e ações da interface.
 - `background.js`: criação das notificações e encerramento da janela TikTok dedicada quando a
   janela de resultados que a iniciou é fechada.
+- `pageMarker.js` / `pageMarker.css`: marcação local dos status salvos, duplicatas no DOM
+  atual e URLs repetidas entre páginas da mesma busca paginada no ThreatX; também posiciona
+  marcas clicáveis para resultados Mortos na barra de rolagem das listas paginadas do ThreatX.
 - `lib/analyzer.js`: coordenação de probes, fetch, leitura em aba e classificação.
 - `lib/classification.js`: classificação pura das evidências coletadas, incluindo regras
   contextuais para Facebook/Meta e estados públicos de perfis/conteúdos TikTok.
