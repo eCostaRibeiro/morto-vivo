@@ -153,6 +153,24 @@ test('exposes Facebook profile confirmation signals without storing page text in
   });
 });
 
+test('confirms an active Facebook profile with a singular follower count', () => {
+  const url = 'https://www.facebook.com/profile.php?id=100084814213674';
+  const result = classifyPage({
+    url,
+    status: null,
+    via: 'tab',
+    html: '<title>(16) Facebook</title>',
+    renderedText: 'SENTINEL-Solución de Deudas · 1 follower · 0 following · Message · Follow · Search · Posts · About · Este contenido no está disponible en este momento.',
+    platform: detectPlatform(new URL(url)),
+  });
+
+  assert.equal(result.status, 'vivo');
+  assert.equal(result.reason, 'Perfil público encontrado');
+  assert.equal(result.facebookEvidence.profileRoute, true);
+  assert.equal(result.facebookEvidence.hasFollowerCount, true);
+  assert.equal(result.facebookEvidence.confirmed, true);
+});
+
 test('does not confirm a Facebook profile when the page title is a login prompt', () => {
   const url = 'https://www.facebook.com/profile.php?id=61591482313247';
   const result = classifyPage({
