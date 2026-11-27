@@ -150,8 +150,9 @@ escaping de campos e proteção contra fórmulas de planilha.
   explícito nem evidência definitiva da plataforma. São avaliadas após sinais de remoção,
   soft-404 e páginas estacionadas, antes do fallback genérico de plataforma.
 - Preserve os casos Meta separados por tipo de recurso: aviso genérico de indisponibilidade
-  em perfil do Facebook não prova remoção, e sinais de perfil público prevalecem sobre avisos
-  genéricos; a Biblioteca de Anúncios só é classificada quando
+  em perfil do Facebook é classificado como possível takedown (Morto, confiança média, sem
+  confirmar exclusão), e sinais de perfil público prevalecem sobre avisos genéricos; a
+  Biblioteca de Anúncios só é classificada quando
   o estado corresponde ao ID consultado (ativo = Vivo, inativo/pausado/encerrado = Zumbi,
   aviso explícito de ausência na biblioteca = Morto com confiança média). Para TikTok,
   mantenha testes da frase “Não foi possível localizar esta conta” tanto no cabeçalho quanto

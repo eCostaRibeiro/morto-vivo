@@ -234,10 +234,11 @@ perfil, login ou indisponibilidade antes de capturar a página. Rotas de perfil 
 `/people/...` e `profile.php?id=...` são reconhecidas como perfis. Uma indicação de perfil
 público — como nome/heading junto de seções do perfil, ou metadados e atividade visível —
 tem prioridade sobre avisos genéricos de conteúdo indisponível. Esse aviso, sozinho, deixa
-um perfil **Indeterminado**, pois também pode refletir privacidade ou mudança de público.
-Em links de conteúdo, a mensagem pode indicar possível takedown, mas não confirma exclusão.
-Outros sinais genéricos de login ou restrição permanecem indeterminados. Redirecionamentos
-para outro domínio também ficam indeterminados até que o destino seja confirmado.
+um perfil **Morto** com confiança média e tag `possible-takedown`; ainda assim, não confirma
+exclusão e também pode refletir privacidade ou mudança de público. Em links de conteúdo, a
+mesma mensagem pode indicar possível takedown, mas não confirma exclusão. Outros sinais
+genéricos de login ou restrição permanecem indeterminados. Redirecionamentos para outro
+domínio também ficam indeterminados até que o destino seja confirmado.
 
 ### Shopee
 

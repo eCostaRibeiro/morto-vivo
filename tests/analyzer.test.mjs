@@ -1763,8 +1763,8 @@ test('does not invent a Facebook profile title from a numeric profile ID', async
   assert.equal(result.info.facebookEvidence.viaTab, true);
 });
 
-test('keeps Facebook profile unavailable notices indeterminate after rendered-page reading', async () => {
-  const url = 'https://facebook.com/profile.php?id=61594203218424';
+test('classifies unavailable Facebook profile notices as possible takedowns after rendered-page reading', async () => {
+  const url = 'https://facebook.com/vivootoba.empresa';
   const message = 'Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.';
   let tabOptions;
   const result = await checkUrl(url, {
@@ -1788,10 +1788,12 @@ test('keeps Facebook profile unavailable notices indeterminate after rendered-pa
 
   assert.equal(tabOptions.waitForFacebookContent, true);
   assert.equal(tabOptions.facebookWait, 8000);
-  assert.equal(result.status, 'indeterminado');
-  assert.equal(result.reason, 'Facebook não disponibiliza o perfil publicamente; isso não confirma remoção');
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Perfil do Facebook indisponível publicamente (possível remoção; não confirmada)');
   assert.equal(result.confidence, 'média');
-  assert.deepEqual(result.tags, ['content-unavailable']);
+  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+  assert.equal(result.info.facebookEvidence.profileRoute, true);
+  assert.equal(result.info.facebookEvidence.confirmed, false);
 });
 
 test('classifies the active Facebook vanity profile gabyvivofibra as alive', async () => {

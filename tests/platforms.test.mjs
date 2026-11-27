@@ -187,20 +187,22 @@ test('does not confirm a Facebook profile when the page title is a login prompt'
   assert.equal(result.facebookEvidence.confirmed, false);
 });
 
-test('keeps Facebook profile unavailable-now notices indeterminate', () => {
-  const url = 'https://www.facebook.com/profile.php?id=61594203218424';
+test('classifies an unavailable Facebook profile notice as a possible takedown', () => {
+  const url = 'https://www.facebook.com/vivootoba.empresa';
   const result = classifyPage({
     url,
     status: null,
     via: 'tab',
-    renderedText: 'Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.',
+    renderedText: 'Número de notificações não lidas 20+ Este conteúdo não está disponível no momento. Quando isso acontece, geralmente é porque o dono compartilhou o conteúdo apenas com um pequeno grupo de pessoas, alterou quem pode vê-lo ou ele foi excluído.',
     platform: detectPlatform(new URL(url)),
   });
 
-  assert.equal(result.status, 'indeterminado');
-  assert.equal(result.reason, 'Facebook não disponibiliza o perfil publicamente; isso não confirma remoção');
+  assert.equal(result.status, 'morto');
+  assert.equal(result.reason, 'Perfil do Facebook indisponível publicamente (possível remoção; não confirmada)');
   assert.equal(result.confidence, 'média');
-  assert.deepEqual(result.tags, ['content-unavailable']);
+  assert.deepEqual(result.tags, ['content-unavailable', 'possible-takedown']);
+  assert.equal(result.facebookEvidence.profileRoute, true);
+  assert.equal(result.facebookEvidence.confirmed, false);
 });
 
 test('recognizes the English Facebook unavailable-now notice on content as a possible takedown', () => {
